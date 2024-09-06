@@ -1,0 +1,29 @@
+{
+  "name": "SailsCalls",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "type": "module",
+  "description": "",
+  "scripts": {
+    "build": "rollup -c",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@gear-js/api": "^0.38.2",
+    "@jest/types": "^29.6.3",
+    "@polkadot/api": "^12.0.1",
+    "axios": "^1.7.7",
+    "sails-js": "^0.1.10",
+    "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^11.1.6",
+    "@types/jest": "^29.5.12",
+    "jest": "^29.7.0",
+    "rollup": "^4.21.2",
+    "ts-jest": "^29.2.5",
+    "tslib": "^2.7.0",
+    "typescript": "^5.5.4"
+  }
+}
