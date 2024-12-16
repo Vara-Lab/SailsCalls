@@ -1,24 +1,12 @@
-import axios from 'axios';
-
-export async function obtenerDatos(url: string): Promise<any> {
-  return new Promise(async resolve => {
-    const response = await axios.get(url);
-    resolve(response.data);
-  })
-}
-
-
-
-
-// IUpdateVoucherParams
-
+// [TODO]: check IUpdateVoucherParams implementation 
 
 /* eslint-disable @typescript-eslint/semi */
 import { Sails, TransactionBuilder } from "sails-js";
+import { SailsIdlParser } from "sails-js-parser";
 import { KeyringPair, KeyringPair$Json } from '@polkadot/keyring/types';
 import { GearApi, GearKeyring } from "@gear-js/api";
-import { HexString } from '@gear-js/api/types';
-import { 
+import { HexString } from "@gear-js/api/types";
+import type { 
     UrlArrayData, 
     CallbackType, 
     SailsCallbacks, 
@@ -28,9 +16,9 @@ import {
     ISailsCalls,
     WalletSigner,
 } from "./types.js";
-import { IKeyringPair } from "@polkadot/types/types";
+import {  IKeyringPair } from "@polkadot/types/types";
 
-export default class SailsCalls {
+export class SailsCalls {
     private sails: Sails;
     private gearApi: GearApi;
     private contractId: HexString | null;
@@ -115,7 +103,8 @@ export default class SailsCalls {
      */
     static new = (data?: ISailsCalls): Promise<SailsCalls> => {
         return new Promise(async resolve => {
-            const sailsInstance = await Sails.new();
+            const parser = await SailsIdlParser.new();
+            const sailsInstance = new Sails(parser);
 
             let contractId: HexString | null = null;
             let idl: string | null = null;
@@ -1048,7 +1037,7 @@ export default class SailsCalls {
                 return;
             }
 
-            const newVoucherData = {
+            const newVoucherData = { //: IUpdateVoucherParams = {
                 prolongDuration: numOfBlocks,
             };
 
@@ -1130,7 +1119,7 @@ export default class SailsCalls {
                 return;
             }
 
-            const newVoucherData = {
+            const newVoucherData = { //: IUpdateVoucherParams = {
                 balanceTopUp: 1e12 * numOfTokens
             };
 
@@ -1262,7 +1251,7 @@ export default class SailsCalls {
         return new Promise(async resolve => {
             const voucherBalance = await this.gearApi.balance.findOut(voucherId);
             const voucherBalanceFormated = Number(
-                BigInt(voucherBalance.toString()) // 1_000_000_000_000n
+                BigInt(voucherBalance.toString()) / 1_000_000_000_000n
             );
 
             resolve(voucherBalanceFormated);
@@ -1446,10 +1435,7 @@ export default class SailsCalls {
         const signlessToSend = JSON.parse(JSON.stringify(pair));
         delete signlessToSend['encoding'];
         delete signlessToSend['meta'];
-        // const encodingType = signlessToSend.encoding.type;
-        // delete signlessToSend.encoding['type'];
-        // signlessToSend.encoding['encodingType'] = encodingType;
-    
+        
         return signlessToSend;
     }
 
