@@ -1,67 +1,301 @@
-import { HexString } from "@gear-js/api";
-import { 
+import type { HexString } from "@gear-js/api";
+import type { 
     IKeyringPair, 
     Signer 
 } from "@polkadot/types/types";
+import type { Sails } from "sails-js";
+
+export type GasLimitType = bigint | { extraGasInCalculatedGasFees: number };
+export type ContractAddress = string | HexString | HexString[];
+
+/**
+ * ## Interface to store data of SailsIntances
+ */
+export interface SailsInstance {
+    sailsInstance: Sails;
+    data: ContractData;
+}
+
+/**
+ * ## Interface to store contracts data in SailsCalls
+ * This interface is used only for SailsCalls
+ */
+export interface SailsCallsContractsData {
+    [key: string]: SailsInstance
+}
+
+/**
+ * ## Basic contract data 
+ * The interface store the address and the idl from a contract
+ */
+export interface ContractData {
+    address: HexString;
+    idl: string;
+}
+
+/**
+ * ## Contract data to be stored
+ * It extends the contract data and adds the name of the contract
+ */
+export interface NewContractData extends ContractData {
+    contractName: string;
+}
+
+/**
+ * ## Interface to create a new voucher
+ */
+export interface ICreateVoucher {
+    /**
+     * ### Contract or contracts to bind the voucher - OPTIONAL
+     * You can set the contract or contracts to bind the voucher that you wil create, yo can do
+     * this in four different ways:
+     * - You can not set the contract to bind the voucher, SailsCalls will set the voucher to the first contract stored in the SailsCalls instance
+     * (the saiuls instances are stored in an literal object)
+     * - With contract name (string): SailsCalls will search the contract name in all the sails instances and create the voucher to it.
+     * - Contract address: you can bind the voucher to an specified contract address
+     * - Contract addresses: you can pass to the method an array of contracts id to bind the voucher that will be created.
+     * 
+     * @example
+     * // Set the voucher to a contract stored in SailsCalls instances by contract name
+     * const voucherId: ICreateVoucher = {
+     *     contractToSetVoucher: 'ContractName', // Contract name in SailsCalls instance
+     *     // more options ...
+     * }; 
+     * 
+     * // Set the voucher to a contract address
+     * const voucherId: ICreateVoucher = {
+     *     contractToSetVoucher: '0x...', // Contract address
+     *     // more options ...
+     * };
+     * 
+     * // Set the voucher to n contract address (more than one)
+     * const voucherId: ICreateVoucher = {
+     *     contractToSetVoucher: [
+     *         '0x...', // first contract address to bind the voucher
+     *         '0x...', // second contract address to bind the voucher
+     *         // more contracts address
+     *     ]
+     * };
+     */
+    contractToSetVoucher?: ContractAddress;
+    /**
+     * ## User address to bind the voucher
+     */
+    userAddress: HexString;
+    /**
+     * ## Initial amount of tokens for voucher
+     */
+    initialTokensInVoucher: number;
+    /**
+     * ## Initial time expiration for voucher (in blocks)
+     * Set the initial voucher expiration in blocks, one hour = 1200 blocks
+     */
+    initialExpiredTimeInBlocks: number;
+    /**
+     * ## Optional callbacks for voucher creation
+     */
+    callbacks?: SailsCallbacks;
+}
 
 /**
  * ## Inteface with optional initial values for Sails Calls
  */
 export interface ISailsCalls { 
     /**
-     * ## Contract id to send messages
+     * ### Contracts data to be stored
+     * Saves the contracts data in the SailsCalls instance
      */
-    contractId?: HexString,
+    newContractsData?: NewContractData[];
     /**
-     * ## String idl
+     * ### Network that SailsCalls will use
+     * if not provided, local network will be used
      */
-    idl?: string,
+    network?: string;
     /**
-     * ## Network that SailsCalls will use
+     * ### Sponsor data that will sign the voucher, voucher updates, etc
+     * if not provided, vouchers feature cant be used
      */
-    network?: string,
-    /**
-     * ## Sponsor data that will sign the voucher, voucher updates, etc
-     */
-    voucherSignerData?: SponsorData
+    voucherSignerData?: SponsorData;
 }
 
+/**
+ * ## Sponsor data
+ * name and mnemonic from sponsor that will sign the future vouchers
+ */
 export interface SponsorData {
-    sponsorName: string,
-    sponsorMnemonic: string
+    sponsorName: string;
+    sponsorMnemonic: string;
+}
+
+/**
+ * ## Errors from SailsCalls and sails-js
+ */
+export interface SailsCallsError {
+    // error: 'message_error' | 'query_error' | 'general_error',
+    sailsCallsError?: string;
+    sailsError?: string;
+    gearError?: string;
 }
 
 /**
  * ## Query options
  */
-export interface SailsQueryOptions { 
+export interface ISailsQueryOptions { 
     /**
-     * ## User id for the query
-     * An ID is required for queries, in this case,
-     * the user address, if not specified, address 
-     * zero will be used
+     * ### Contract to call - OPTIONAL
+     * - If you dont pass to this attribute, SailsCalls will use the first 
+     *   contract data stored (SailsCalls stores contracts inside an object 
+     *    literal, with key being the name of the contract).
+     * - If you give a string, SailsCalls will search to the stored 
+     *   contract to call, if not exists, it will notify to the user
+     * - If you give contract data, SailsCalls will crate a temporary 
+     *   instance of Sails-js to send the menssage to the given contract
+     * @example
+     * // Example 1, give the name of the stored contract
+     * const commandOptions: ISailsQueryOptions = {
+     *     //attributes ...
+     *     contractToCall: 'PingContract', // Set the name of the contract
+     *     //attributes ...
+     * }
+     * 
+     * // Example 2, give the contract data to send the message
+     * const commandOptions: ISailsQueryOptions = {
+     *     //attributes ...
+     *     contractToCall: { // Set the contract data to send the message
+     *         address: '0x...', // Cotract id to send the message
+     *         idl: `...` // Contract idl 
+     *     },
+     *     //attributes ...
+     * }
      */
-    userId?: HexString,
+    contractToCall?: ContractData | string;
+    /**
+     * ### Service name 
+     * Specify the name of the service to call
+     */
+    serviceName: string;
+    /**
+     * ### Service method name
+     * Specify the name of the name from the service to call
+     */
+    methodName: string;
+    /**
+     * ## User address for the query
+     * An address is required for queries, in this case,
+     * the user address, if not specified, zero 
+     * address will be used
+     */
+    userAddress?: HexString;
     /**
      * ### Arguments, if any, for query method
      * Specify in the array all arguments for service method
      */
-    callArguments?: any[],
+    callArguments?: any[];
     /**
      * ### Callbacks for each state of the command
      */
-    callbacks?: SailsCallbacks
+    callbacks?: SailsCallbacks;
 }
 
 /**
  * ## Command options
  */
-export interface SailsCommandOptions {
+export interface ISailsCommandOptions {
     /**
-     * ### Arguments, if any, for command method
-     * Specify in the array all arguments for service method
+     * ### Signer data
+     * The account to sign can be obtained from the extension, by creating 
+     * a new keyringpair account or by obtaining it from the contract (in 
+     * case of storing it in it)
      */
-    callArguments?: any[],
+    signerData: AccountSigner;
+    /**
+     * ### Contract to call - OPTIONAL
+     * - If you dont pass to this attribute, SailsCalls will use the first 
+     *   contract data stored (SailsCalls stores contracts inside an object 
+     *    literal, with key being the name of the contract).
+     * - If you give a string, SailsCalls will search to the stored 
+     *   contract to call, if not exists, it will notify to the user
+     * - If you give contract data, SailsCalls will crate a temporary 
+     *   instance of Sails-js to send the menssage to the given contract
+     * @example
+     * // Example 1, give the name of the stored contract
+     * const commandOptions: SailsCommandOptions = {
+     *     //attributes ...
+     *     contractToCall: 'PingContract', // Set the name of the contract
+     *     //attributes ...
+     * }
+     * 
+     * // Example 2, give the contract data to send the message
+     * const commandOptions: SailsCommandOptions = {
+     *     //attributes ...
+     *     contractToCall: { // Set the contract data to send the message
+     *         address: '0x...', // Cotract id to send the message
+     *         idl: `...` // Contract idl 
+     *     },
+     *     //attributes ...
+     * }
+     */
+    contractToCall?: ContractData | string;
+    /**
+     * ### Service name 
+     * Specify the name of the service to call
+     */
+    serviceName: string;
+    /**
+     * ### Service method name
+     * Specify the name of the name from the service to call
+     */
+    methodName: string;
+    /**
+     * ### Arguments, if any, for command method - OPTIONAL
+     * Specify in the array all arguments for service method
+     * 
+     * The attribute is optional, can be discarded
+     */
+    callArguments?: any[];
+    /**
+     * ## Value (tokens) associated with the message - OPTIONAL
+     * 
+     * The attribute is optional, can be discarded
+     * @example
+     * const options: SailsCommandOptions = {
+     *     // One token
+     *     tokensToSend: 1_000_000_000_000n
+     * };
+     */
+    tokensToSend?: bigint;
+    /**
+     * ### Voucher id that will be used in the current message - OPTIONAL
+     * If voucher id is set, it will be used for current message (HexString).
+     * 
+     * The attribute is optional, can be discarded
+     */
+    voucherId?: HexString;
+    /**
+     * ### Set the gas fees to spend in the message - OPTIONAL
+     * If not provided, gas will be calculated automatically without extra gas fees.
+     * You can set the gas limit in two ways:
+     * - As a number, it will be the gas limit to spend in the message
+     * - As an object, it will be the extra gas fees in porcentage to spend in the message,
+     *   for example, if you set 10, it will be 10% of the gas limit to spend in the message
+     * 
+     * The attribute is optional, can be ommited
+     * 
+     * @example
+     * // 1- Set the gas limit to spend in the message
+     * const options = SailsCommandOptions = {
+     *     gasLimit: 1_000_000n // Set the gas limit to spend in the message
+     * };
+     * 
+     * // 2- Set extra gas fees in porcentage
+     * const options = SailsCommandOptions = {
+     *    gasLimit: { 
+     *        // adds 10% extra gas fees to the calculated gas fees
+     *        extraGasInCalculatedGasFees: 10 
+     *    }
+     * };
+     */
+    gasLimit?: GasLimitType;
     /**
      * ### Callbacks for each state of the command
      * Callback available:
@@ -74,23 +308,12 @@ export interface SailsCommandOptions {
      * - onLoadAsync
      * - onBlockAsync
      */
-    callbacks?: SailsCallbacks,
-    /**
-     * ## Value (tokens) associated with the message
-     * @example
-     * const options: SailsCommandOptions = {
-     *     // One token
-     *     tokensToSend: 1_000_000_000_000n
-     * };
-     */
-    tokensToSend?: bigint,
-    /**
-     * ## Voucher id that will be used in the current message
-     * If voucher id is set, it will be used for current message (HexString).
-     */
-    voucherId?: HexString
+    callbacks?: SailsCallbacks;
 }
 
+/**
+ * ## Signer from wallet extension (Web browser)
+ */
 export interface WalletSigner {
     userAddress: HexString,
     signer: Signer,
@@ -107,14 +330,14 @@ export interface SailsCallbacks {
      * 
      * @returns void
      */
-    onSuccess?: () => void,
+    onSuccess?: () => void;
     /**
      * ### On error callback
      * Will run this callback if something went wrong.
      * 
      * @returns void
      */
-    onError?: () => void,
+    onError?: () => void;
     /**
      * ### On load callback
      * Will run this callback when the message or a voucher action 
@@ -122,7 +345,7 @@ export interface SailsCallbacks {
      * 
      * @returns void
      */
-    onLoad?: () => void,
+    onLoad?: () => void;
     /**
      * ### On block callback
      * Will run this callback when command get its blockhash.
@@ -132,7 +355,7 @@ export interface SailsCallbacks {
      * @param blockHash Optional parameter, gives blockhash of transaction
      * @returns void
      */
-    onBlock?: (blockHash?: HexString) => void,
+    onBlock?: (blockHash?: HexString) => void;
     /**
      * ### On success async callback
      * Will run this callback when if the message was send successfully or 
@@ -141,7 +364,7 @@ export interface SailsCallbacks {
      * 
      * @returns Promise that the command or query will execute
      */
-    onSuccessAsync?: () => Promise<void>,
+    onSuccessAsync?: () => Promise<void>;
     /**
      * ### On error async callback
      * Will run this callback if something went wrong.
@@ -170,10 +393,7 @@ export interface SailsCallbacks {
      */
     onBlockAsync?: (blockHash?: HexString) => Promise<void>,
 }
-export type ContractId = HexString;
-export type ServiceName = string;
-export type MethodName = string;
-export type UrlArrayData = [ContractId, ServiceName, MethodName];
+
 export type CallbackType = 'onsuccess' 
     | 'asynconsuccess' 
     | 'onerror' 

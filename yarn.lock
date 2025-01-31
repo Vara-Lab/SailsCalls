@@ -1193,10 +1193,10 @@
   dependencies:
     "@types/istanbul-lib-report" "*"
 
-"@types/jest@^29.5.12":
-  version "29.5.12"
-  resolved "https://registry.yarnpkg.com/@types/jest/-/jest-29.5.12.tgz#7f7dc6eb4cf246d2474ed78744b05d06ce025544"
-  integrity sha512-eDC8bTvT/QhYdxJAulQikueigY5AsdBRH2yDKW3yveW7svY3+DzN84/2NUgkw10RTiJbWqZrTtoGVdYlvFJdLw==
+"@types/jest@^29.5.14":
+  version "29.5.14"
+  resolved "https://registry.yarnpkg.com/@types/jest/-/jest-29.5.14.tgz#2b910912fa1d6856cadcd0c1f95af7df1d6049e5"
+  integrity sha512-ZN+4sdnLUbo8EVvVc2ao0GFW6oVrQRPn4K2lglySj7APvSrgzxHiNNK99us4WDMi57xxA2yggblIAMNhXOotLQ==
   dependencies:
     expect "^29.0.0"
     pretty-format "^29.0.0"
@@ -2662,6 +2662,11 @@ sails-js-parser@0.3.1:
   version "0.3.1"
   resolved "https://registry.yarnpkg.com/sails-js-parser/-/sails-js-parser-0.3.1.tgz#f671bfb5b9c50ce31c97249252fb79719fc310d5"
   integrity sha512-G/ITC8perMP2j6hs2ePDZcowndMoOtKaFxLHjfwBuZ948ttLuTNP7QpJxbp7KzEZzRX5iS2Tw3dwoTsiiiSVTg==
+
+sails-js-types@^0.3.1:
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/sails-js-types/-/sails-js-types-0.3.1.tgz#9e7ec53df71765d5a5489657c001f12cb62002f7"
+  integrity sha512-bTDg9F71nbwWusker0cmZcreziFd7ROyGt7Do030YTfnsQIHwEAhuzhI93g8UxOwiafqcm2/jy8HYcJSqd/tfw==
 
 sails-js@0.3.1:
   version "0.3.1"

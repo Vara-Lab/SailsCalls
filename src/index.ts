@@ -1,136 +1,181 @@
 // [TODO]: check IUpdateVoucherParams implementation 
+// import { Sails, TransactionBuilder, ZERO_ADDRESS } from "sails-js";
+
 
 /* eslint-disable @typescript-eslint/semi */
-import { Sails, TransactionBuilder } from "sails-js";
+import { Sails, ZERO_ADDRESS } from "sails-js";
 import { SailsIdlParser } from "sails-js-parser";
-import { KeyringPair, KeyringPair$Json } from '@polkadot/keyring/types';
+import type { KeyringPair, KeyringPair$Json } from '@polkadot/keyring/types';
 import { GearApi, GearKeyring } from "@gear-js/api";
-import { HexString } from "@gear-js/api/types";
+import type { HexString } from "@gear-js/api/types";
 import type { 
-    UrlArrayData, 
     CallbackType, 
     SailsCallbacks, 
-    SailsCommandOptions, 
-    AccountSigner, 
-    SailsQueryOptions,
+    ISailsCommandOptions, 
+    ISailsQueryOptions,
     ISailsCalls,
     WalletSigner,
+    SailsCallsError,
+    NewContractData,
+    SailsCallsContractsData,
+    ICreateVoucher,
 } from "./types.js";
-import {  IKeyringPair } from "@polkadot/types/types";
+import type { IKeyringPair } from "@polkadot/types/types";
 
 export class SailsCalls {
-    private sails: Sails;
+    private sailsInstances: SailsCallsContractsData;
     private gearApi: GearApi;
-    private contractId: HexString | null;
-    private idl: boolean | null;
+    private sailsParser: SailsIdlParser;
+    // private network: string;
     private accountToSignVouchers: KeyringPair | null;
-    private regexCompleteUrl = /^[a-zA-Z0-9]+\/[a-zA-Z0-9]+\/[a-zA-Z0-9]+$/;
-    private regexNoContractId = /^[a-zA-Z0-9]+\/[a-zA-Z0-9]+$/;
 
     private constructor(
-        sails: Sails, 
-        api: GearApi, 
-        contractId: HexString | null, 
-        idl: string | null,
+        api: GearApi,
+        parser: SailsIdlParser,
+        newContractsData: NewContractData[],
+        // network: string,
         accountToSignVouchers: KeyringPair | null
     ) {
-        this.sails = sails;
-        this.contractId = contractId;
-        this.idl = false;
-        this.accountToSignVouchers = accountToSignVouchers;
         this.gearApi = api;
-        this.sails.setApi(api);
+        this.sailsParser = parser;
+        this.sailsInstances = {};
+        // this.network = network;
+        this.accountToSignVouchers = accountToSignVouchers;
 
-        if (idl) {
-            try {
-                this.sails.parseIdl(idl);
-                this.idl = true;
-            } catch (e) {
-                console.error('Idl not set, it is incorrect');
+        for (const newContractData of newContractsData) {
+            const {
+                contractName,
+                address,
+                idl
+            } = newContractData;
+            const sailsInstance = new Sails(parser);
+
+            if (contractName.length > 1 && contractName.substring(0, 2) == '0x') {
+                throw new Error(`Cant set contract name: invalid name ${contractName}`);
             }
-        } 
+
+            if (idl.trim() == '') {
+                throw new Error('IDL cant be empty');
+            }
+
+            try {
+                sailsInstance.setApi(api);
+                sailsInstance.setProgramId(address);
+                sailsInstance.parseIdl(idl);
+            } catch (e) {
+                console.error(`Contract data not set for: ${contractName}`);
+                throw new Error((e as Error).message);
+            }
+
+            this.sailsInstances[contractName] = {
+                sailsInstance,
+                data: newContractData
+            };
+        }
     }
 
     /**
      * ## Returs a new SailsCalls instance
-     * Static method that returns a new instance of SailsCalls
-     * @param data Optional parameter to set initial contractId, idl and network
+     * - Static method that returns a new instance of SailsCalls
+     * - The parameter is optional, and its attributes are optionals too:
+     *     + newContractsData: Contracts data to store in the SailsCalls instance to be used later
+     *     + network: Network to connect the api
+     *     + voucherSignerData: sponsor name and mnemonic that will be used to sign the vouchers, etc (only for vouchers - gasless purpose)
+     * @param data Optional parameter to set initial contracts data, network and sponsor
      * @returns SailsCalls instance
      * @example
-     * // Returns SailsCalls instance with no contract id 
-     * // and IDL. With network: ws://localhost:9944
+     * // Returns SailsCalls instance with no contracts data.
+     * // With network: ws://localhost:9944
      * const sailsCalls = await SailsCalls.new();
      * 
-     * // Returns SailsCalls instance with no contract id 
-     * // and IDL. With Network: wss://testnet.vara.network
+     * // Returns SailsCalls instance with no contracts data.
+     * // With Network: wss://testnet.vara.network
      * const sailsCalls = await SailsCalls.new({
      *     network: 'wss://testnet.vara.network'
      * });
      * 
-     * // Returns SailsCalls instance with no contract id.
-     * // With IDL and Network: wss://testnet.vara.network
+     * // Returns SailsCalls instance with no contracts data.
+     * // With voucher signer and Network: wss://testnet.vara.network
      * const sailsCalls = await SailsCalls.new({
      *     network: 'wss://testnet.vara.network',
-     *     idl: CONTRACT.idl // String idl
-     * });
-     * 
-     * // Returns SailsCalls instance with no IDL.
-     * // With contract id and Network: wss://testnet.vara.network
-     * const sailsCalls = await SailsCalls.new({
-     *     network: 'wss://testnet.vara.network',
-     *     contractId: CONTRACT.contractId
-     * });
-     * 
-     * // Returns SailsCalls instance with contract id, IDL and 
-     * // Network: wss://testnet.vara.network
-     * const sailsCalls = await SailsCalls.new({
-     *     network: 'wss://testnet.vara.network',
-     *     contractId: CONTRACT.contractId,
-     *     idl: CONTRACT.idl // String idl
-     * });
-     * 
-     * // Returns SailsCalls instance with contract id, IDL, with 
-     * // voucher signer and Network: wss://testnet.vara.network
-     * * const sailsCalls = await SailsCalls.new({
-     *     network: 'wss://testnet.vara.network',
-     *     contractId: CONTRACT.contractId,
-     *     idl: CONTRACT.idl // String idl,
      *     voucherSignerData: {
      *         sponsorName: 'Name',
      *         sponsorMnemonic: 'strong void ...'
      *     }
      * });
+     * 
+     * // Returns SailsCalls instance with one contract data.
+     * // With network: wss://testnet.vara.network
+     * const sailsCalls = await SailsCalls.new({
+     *     network: 'wss://testnet.vara.network',
+     *     newContractsData: [
+     *         {
+     *             contractName: "PingContract",
+     *             address: '0x...',
+     *             idl: `...`
+     *         }
+     *     ]
+     * });
+     * 
+     * // Returns SailsCalls instance with one contract data.
+     * // With voucher signer and network: ws://localhost:9944
+     * const sailsCalls = await SailsCalls.new({
+     *     voucherSignerData: {
+     *         sponsorName: 'Name',
+     *         sponsorMnemonic: 'strong void ...'
+     *     },
+     *     newContractsData: [
+     *         {
+     *             contractName: "PingContract",
+     *             address: '0x...',
+     *             idl: `...`
+     *         }
+     *     ]
+     * });
+     * 
+     * // Returns SailsCalls instance with one contract data
+     * // With voucher signer and Network: wss://testnet.vara.network
+     * const sailsCalls = await SailsCalls.new({
+     *     network: 'wss://testnet.vara.network',
+     *     voucherSignerData: {
+     *         sponsorName: 'Name',
+     *         sponsorMnemonic: 'strong void ...'
+     *     },
+     *     newContractsData: [
+     *         {
+     *             contractName: "PingContract",
+     *             address: '0x...',
+     *             idl: `...`
+     *         },
+     *         {
+     *             // Contract data
+     *         },
+     *         // More contracts
+     *     ]
+     * });
      */
     static new = (data?: ISailsCalls): Promise<SailsCalls> => {
-        return new Promise(async resolve => {
-            const parser = await SailsIdlParser.new();
-            const sailsInstance = new Sails(parser);
+        return new Promise(async (resolve, reject) => {
+            const {
+                newContractsData = [],
+                network = 'ws://localhost:9944',
+                voucherSignerData
+            } = data || {};
 
-            let contractId: HexString | null = null;
-            let idl: string | null = null;
-            let network: string = "";
             let voucherSigner: KeyringPair | null = null;
-            
 
-            if (data) {
-                contractId = data.contractId
-                    ? data.contractId
-                    : null;
-                idl = data.idl 
-                    ? data.idl 
-                    : null;
-                network = data.network 
-                    ? data.network 
-                    : 'ws://localhost:9944'
-                
-                if (data.voucherSignerData) {
-                    const { sponsorName, sponsorMnemonic } = data.voucherSignerData;
-
-                    try {
-                        voucherSigner = await GearKeyring.fromMnemonic(sponsorMnemonic, sponsorName);
-                    } catch (e) {
-                        console.error('Error while set signer account, voucher signer not set');
-                    } 
+            if (voucherSignerData) {
+                const { sponsorName, sponsorMnemonic } = voucherSignerData;
+                try {
+                    voucherSigner = await GearKeyring.fromMnemonic(sponsorMnemonic, sponsorName);
+                } catch (e) {
+                    const error: SailsCallsError = {
+                        sailsCallsError: 'Error while set signer account, voucher signer not set',
+                        gearError: (e as Error).message
+                    };
+    
+                    reject(error);
+                    return;
                 }
             }
 
@@ -138,7 +183,20 @@ export class SailsCalls {
                 providerAddress: network 
             });
 
-            resolve(new SailsCalls(sailsInstance, api, contractId, idl, voucherSigner));
+            const sailsParser = await SailsIdlParser.new();
+            try {
+                const sailsInstance = new SailsCalls(
+                    api, 
+                    sailsParser, 
+                    newContractsData, 
+                    // network,    
+                    voucherSigner
+                )
+
+                resolve(sailsInstance);
+            } catch (e) {
+                reject((e as Error).message);
+            }
         });
     }
 
@@ -336,46 +394,147 @@ export class SailsCalls {
      *     }
      * );
      */
-    command = (url: string, signerData: AccountSigner, options?: SailsCommandOptions): Promise<any> => {
+    // command = (url: string, , options?: SailsCommandOptions): Promise<any> => {
+    command = (options: ISailsCommandOptions): Promise<any> => {
         return new Promise(async (resolve, reject) => {
-            try {
-                if (this.urlIsCorrect(url)) {
-                    const response = await this.executeCommand(
-                        url,
-                        signerData,
-                        options
-                    )
+            const {
+                signerData,
+                contractToCall,
+                serviceName,
+                methodName,
+                callArguments = [],
+                tokensToSend = 0n,
+                voucherId,
+                gasLimit,
+                callbacks
+            } = options;
 
-                    resolve(response);
+            let contractSailsInstance: Sails;
+
+            if (contractToCall) {
+                if (typeof contractToCall === 'string') {
+                    const temp = this.sailsInstances[contractToCall];
+                    if (!temp) {
+                        const error: SailsCallsError = {
+                            sailsCallsError: `Contract name '${contractToCall}' is not set in SailsCalls instance`
+                        };
+        
+                        reject(error);
+                        return;
+                    }
+
+                    contractSailsInstance = temp.sailsInstance;
+                } else {
+                    contractSailsInstance = new Sails(this.sailsParser);
+                    try {
+                        contractSailsInstance.setApi(this.gearApi);
+                        contractSailsInstance.parseIdl(contractToCall.idl);
+                        contractSailsInstance.setProgramId(contractToCall.address);
+                    } catch (e) {
+                        const error: SailsCallsError = {
+                            sailsError: (e as Error).message
+                        };
+        
+                        reject(error);
+                        return;
+                    }
+                }
+            } else {
+                const contractNames = Object.keys(this.sailsInstances);
+
+                if (contractNames.length < 1) {
+                    const error: SailsCallsError = {
+                        sailsCallsError: 'No contracts stored in SailsCalls instance'
+                    };
+
+                    reject(error);
                     return;
                 }
-                
-            } catch (e) {
-                reject(e);
+
+                contractSailsInstance = this.sailsInstances[contractNames[0]].sailsInstance;
+            }
+
+            const serviceNames = this.servicesFromSailsInstance(contractSailsInstance);
+
+            if (!serviceNames.includes(serviceName)) {
+                const error: SailsCallsError = {
+                    sailsCallsError: `Service name '${serviceName}' does not exists in contract.\nServices: [${serviceNames}]`
+                };
+
+                reject(error);
                 return;
             }
+
+            const functionsNames = this.serviceFunctionNamesFromSailsInstance(
+                contractSailsInstance, 
+                serviceName, 
+                'functions'
+            );
+
+            if (!functionsNames.includes(methodName)) {
+                const error: SailsCallsError = {
+                    sailsCallsError: `Function name '${methodName}' does not exists in service '${serviceName}'.\nFunctions: [${functionsNames}]`
+                };
+
+                reject(error);
+                return;
+            }
+
+            await this.processCallBack('asynconload', callbacks);
+            this.processCallBack('onload', callbacks);
+
+            let transaction = contractSailsInstance
+                .services[serviceName]
+                .functions[methodName](...callArguments);
 
             try  {
-                if (!this.contractId) {
-                    reject("Contract Id not set");
-                    return;
+                if (gasLimit) {
+                    if (typeof gasLimit === 'object') {
+                        transaction.calculateGas(
+                            false,
+                            gasLimit.extraGasInCalculatedGasFees
+                        );
+                    } else {
+                        transaction.withGas(gasLimit);
+                    }
+                } else {
+                    transaction.calculateGas();
                 }
-                if (this.urlNoContractIdIsCorrect(url)) {
-                    const response = await this.executeCommand(
-                        this.contractId + '/' + url,
-                        signerData,
-                        options
-                    )
 
-                    resolve(response);
-                    return;
+                if (voucherId) transaction.withVoucher(voucherId);
+
+                if ('signer' in signerData) {
+                    const { userAddress, signer } = signerData as WalletSigner;
+                    transaction.withAccount(userAddress, { signer });
+                } else {
+                    const keyringPair = signerData as IKeyringPair;
+                    transaction.withAccount(keyringPair);
                 }
+
+                transaction.withValue(tokensToSend);
+
+                const { blockHash, response } = await transaction.signAndSend();
+
+                console.log(`blockhash: ${blockHash}`);
+                
+                await this.processCallBack('asynconblock', callbacks, blockHash);
+                this.processCallBack('onblock', callbacks, blockHash);
+                
+                const serviceResponse = await response();
+
+                await this.processCallBack('asynconsuccess', callbacks);
+                this.processCallBack('onsuccess', callbacks);
+
+                resolve(serviceResponse);
             } catch (e) {
-                reject(e);
-                return;
-            }
+                const sailsError = (e as Error).message;
+                const error: SailsCallsError = {
+                    sailsCallsError: 'error while sending message',
+                    sailsError: sailsError
+                };
 
-            reject(`Url is not valid: ${url}`);
+                reject(error);
+            }
         });
     }
     
@@ -518,220 +677,117 @@ export class SailsCalls {
      * );
      * 
      */
-    query = (url: string, options?: SailsQueryOptions): Promise<any> => {
+    query = (options: ISailsQueryOptions): Promise<any> => {
         return new Promise(async (resolve, reject) => {
-            const sailsOptions = options
-                ? options
-                : {};
-
-            try {
-                if (this.urlIsCorrect(url)) {
-                    const response = await this.executeQuery(
-                        url,
-                        sailsOptions
-                    )
-
-                    resolve(response);
-                    return;
-                }
-            } catch (e) {
-                reject(e);
-                return;
-            }
-
-            try  {
-                if (!this.contractId) {
-                    reject("Contract Id not set");
-                    return;
-                }
-                if (this.urlNoContractIdIsCorrect(url)) {
-                    const response = await this.executeQuery(
-                        this.contractId + '/' + url,
-                        sailsOptions
-                    )
-
-                    resolve(response);
-                    return;
-                }
-            } catch (e) {
-                reject(e);
-                return;
-            }
-
-            reject(`Url is not valid: ${url}`);
-        });
-    }
-
-    private executeCommand = (url: string, signerData: AccountSigner, options?: SailsCommandOptions): Promise<any> => {
-        return new Promise(async (resolve, reject) => {
-            if (!this.idl) {
-                reject('idl not specified');
-                return;
-            }
-
-            const temp = this.urlData(url);
-
-            if (typeof temp === 'string') {
-                reject(temp);
-                return;
-            }
-
-            const { 
-                callArguments, 
-                callbacks, 
-                tokensToSend,
-                voucherId
-            } = options 
-                ? options 
-                : { 
-                    callArguments: undefined, 
-                    callbacks: undefined,
-                    tokensToSend: undefined,
-                    voucherId: undefined
-                  };
-
-            const [
-                contractAddress,
+            const {
+                contractToCall,
                 serviceName,
-                methodName
-            ] = temp;
+                methodName,
+                userAddress = ZERO_ADDRESS,
+                callArguments = [],
+                callbacks
+            } = options;
 
-            this.sails.setProgramId(contractAddress);
+            let contractSailsInstance: Sails;
+
+            if (contractToCall) {
+                if (typeof contractToCall === 'string') {
+                    const temp = this.sailsInstances[contractToCall];
+                    if (!temp) {
+                        const error: SailsCallsError = {
+                            sailsCallsError: `Contract name '${contractToCall}' is not set in SailsCalls instance`,
+                        };
+
+                        reject(error);
+                        return;
+                    }
+
+                    contractSailsInstance = temp.sailsInstance;
+                } else {
+                    contractSailsInstance = new Sails(this.sailsParser);
+                    try {
+                        contractSailsInstance.setApi(this.gearApi);
+                        contractSailsInstance.parseIdl(contractToCall.idl);
+                        contractSailsInstance.setProgramId(contractToCall.address);
+                    } catch (e) {
+                        const error: SailsCallsError = {
+                            sailsError: (e as Error).message
+                        };
+
+                        reject(error);
+                        return;
+                    }
+                }
+            } else {
+                const contractNames = Object.keys(this.sailsInstances);
+
+                if (contractNames.length < 1) {
+                    const error: SailsCallsError = {
+                        sailsCallsError: 'No contracts stored in SailsCalls instance'
+                    };
+
+                    reject(error);
+                    return;
+                }
+
+                contractSailsInstance = this.sailsInstances[contractNames[0]].sailsInstance;
+            }
+
+            const serviceNames = this.servicesFromSailsInstance(contractSailsInstance);
+
+            if (!serviceNames.includes(serviceName)) {
+                const error: SailsCallsError = {
+                    sailsCallsError: `Service name '${serviceName}' does not exists in contract.\nServices: [${serviceNames}]`
+                };
+
+                reject(error);
+                return;
+            }
+
+            const functionsNames = this.serviceFunctionNamesFromSailsInstance(
+                contractSailsInstance, 
+                serviceName, 
+                'queries'
+            );
+
+            if (!functionsNames.includes(methodName)) {
+                const error: SailsCallsError = {
+                    sailsCallsError: `Query name '${methodName}' does not exists in service '${serviceName}'.\nQueries: [${functionsNames}]`
+                };
+
+                reject(error);
+                return;
+            }
 
             await this.processCallBack('asynconload', callbacks);
             this.processCallBack('onload', callbacks);
 
-            let transaction: TransactionBuilder<unknown>;
+            const queryMethod = contractSailsInstance
+                .services[serviceName]
+                .queries[methodName];
 
             try {
-                const services = Object.keys(this.sails.services);
-
-                if (services.indexOf(serviceName) === -1) {
-                    reject(`Service does not exists: '${serviceName}'\nServices: [${services}]`);
-                    return;
-                }
-
-                const functions = Object.keys(this.sails.services[serviceName].functions);
-
-                if (functions.indexOf(methodName) === -1) {
-                    reject(`Function does not exists in ${serviceName}: '${methodName}'\nFunctions: [${functions}]`);
-                    return;
-                }
-                
-                
-                transaction = callArguments
-                    ? this.sails.services[serviceName].functions[methodName](...callArguments)
-                    : this.sails.services[serviceName].functions[methodName]();
-            } catch (e) {
-                reject('Error when building command');
-                return;
-            }
-
-            if ("signer" in signerData) {
-                const { userAddress, signer } = signerData as WalletSigner;
-                transaction.withAccount(userAddress, { signer });
-            } else {
-                const keyringPair = signerData as IKeyringPair;
-                transaction.withAccount(keyringPair);
-            }
-
-            if (tokensToSend) {
-                transaction.withValue(tokensToSend);
-            }
-
-            if (voucherId) {
-                transaction.withVoucher(voucherId);
-            }
-
-            try {
-                await transaction.calculateGas(false, 10);
-
-                const { blockHash, response } = await transaction.signAndSend();
-
-                console.log(`blockhash: ${blockHash}`);
-
-                await this.processCallBack('asynconblock', callbacks, blockHash);
-                this.processCallBack('onblock', callbacks, blockHash);
-
-                const serviceResponse = await response();
+                const queryResponse = await queryMethod(
+                    userAddress, 
+                    undefined, 
+                    undefined, 
+                    ...callArguments
+                );
 
                 await this.processCallBack('asynconsuccess', callbacks);
                 this.processCallBack('onsuccess', callbacks);
 
-                resolve(serviceResponse);
+                resolve(queryResponse);
             } catch(e) {
                 await this.processCallBack('asynconerror', callbacks);
                 this.processCallBack('onerror', callbacks);
 
-                reject('Error while sign message or while sending message');
-            }
-        });
-    }
+                const error: SailsCallsError = {
+                    sailsCallsError: 'Error while calling query method',
+                    sailsError: (e as Error).message
+                };
 
-    private executeQuery = (url: string, options: SailsQueryOptions): Promise<any> => {
-        return new Promise(async (resolve, reject) => {
-            if (!this.idl) {
-                reject('idl not specified');
-                return;
-            }
-
-            const temp = this.urlData(url);
-
-            if (typeof temp === 'string') {
-                reject(temp);
-                return
-            }
-
-            const { userId, callArguments, callbacks } = options;
-            
-
-            const [
-                contractAddress,
-                serviceName,
-                methodName
-            ] = temp;
-
-            this.sails.setProgramId(contractAddress);
-
-            try {
-                await this.processCallBack('asynconload', callbacks);
-                this.processCallBack('onload', callbacks);
-
-                const services = Object.keys(this.sails.services);
-
-                if (services.indexOf(serviceName) === -1) {
-                    reject(`Service does not exists: '${serviceName}'\nServices: [${services}]`);
-                    return;
-                }
-
-                const queries = Object.keys(this.sails.services[serviceName].queries);
-
-                if (queries.indexOf(methodName) === -1) {
-                    reject(`Query does not exists in ${serviceName}: '${methodName}'\nQueries: [${queries}]`);
-                    return;
-                }
-                
-                const queryMethod = this.sails
-                    .services[serviceName]
-                    .queries[methodName];
-
-                const address = userId
-                    ? userId
-                    : '0x0000000000000000000000000000000000000000000000000000000000000000'
-
-                const queryResponse = callArguments
-                    ? await queryMethod(address, undefined, undefined, ...callArguments)
-                    : await queryMethod(address);
-
-                await this.processCallBack('asynconsuccess', callbacks);
-                this.processCallBack('onsuccess', callbacks);
-                
-                resolve(queryResponse);
-            } catch (e) {
-                await this.processCallBack('asynconerror', callbacks);
-                this.processCallBack('onerror', callbacks);
-                
-                reject('Error while calling query method');
+                reject(error);
             }
         });
     }
@@ -754,15 +810,25 @@ export class SailsCalls {
     ): Promise<void> => {
         return new Promise(async (resolve, reject) => {
             try {
-                const voucherSigner = await GearKeyring.fromMnemonic(sponsorMnemonic, sponsorName);
+                const voucherSigner = await GearKeyring.fromMnemonic(
+                    sponsorMnemonic, 
+                    sponsorName
+                );
                 this.accountToSignVouchers = voucherSigner;
 
                 resolve();
             } catch (e) {
-                reject('Error while set signer account, voucher signer not set');
+                const error: SailsCallsError = {
+                    sailsCallsError: 'Error while set signer account, voucher signer not set',
+                    gearError: (e as Error).message
+                };
+
+                reject(error);
             } 
         });
     }
+
+    
 
     /**
      * ## Creates a new voucher
@@ -822,22 +888,65 @@ export class SailsCalls {
      * );
      * 
      */
-    createVoucher = (
-        userAddress: HexString,
-        initialTokensInVoucher: number,
-        initialExpiredTimeInBlocks: number,
-        callbacks?: SailsCallbacks
-    ): Promise<HexString> => {
+    // createVoucher = (
+    //     userAddress: HexString,
+    //     initialTokensInVoucher: number,
+    //     initialExpiredTimeInBlocks: number,
+    //     callbacks?: SailsCallbacks
+    // ): Promise<HexString> => {
+    createVoucher = (options: ICreateVoucher): Promise<HexString> => {
+        const {
+            contractToSetVoucher,
+            userAddress,
+            initialTokensInVoucher,
+            initialExpiredTimeInBlocks,
+            callbacks
+        } = options;
+
         return new Promise(async (resolve, reject) => {
-            if (!this.contractId) {
-                reject('No contract id not set');
-                return;
+            const contractsId: HexString[] = [];
+
+            if (contractToSetVoucher) {
+                if (typeof contractToSetVoucher !== 'object') {
+                    if (contractToSetVoucher.substring(0, 2) != '0x') {
+                        const temp = this.sailsInstances[contractToSetVoucher];
+
+                        if (!temp) {
+                            const error: SailsCallsError = {
+                                sailsCallsError: 'Contract name does not exists'
+                            };
+                            reject(error);
+                            return;
+                        }
+
+                        contractsId.push(temp.data.address);
+                    } else {
+                        contractsId.push(contractToSetVoucher as HexString);
+                    }
+                } else {
+                    contractsId.push(...contractToSetVoucher);
+                }
+            } else {
+                const contractNames = Object.keys(this.sailsInstances);
+
+                if (contractNames.length < 1) {
+                    const error: SailsCallsError = {
+                        sailsCallsError: 'No contracts stored in SailsCalls instance'
+                    };
+
+                    reject(error);
+                    return;
+                }
+
+                const contractName = contractNames[0];
+                const contractAddress = this.sailsInstances[contractName].data.address;
+                contractsId.push(contractAddress);
             }
 
             try {
                 const voucherId = this.generateVoucher(
                     userAddress,
-                    [this.contractId],
+                    contractsId,
                     initialTokensInVoucher,
                     initialExpiredTimeInBlocks,
                     callbacks
@@ -954,12 +1063,14 @@ export class SailsCalls {
                 return;
             }
 
-            const voucherIssued = await this.gearApi.voucher.issue(
-                userAddress,
-                1e12 * initialTokensInVoucher,
-                initialExpiredTimeInBlocks,
-                contractsId
-            );
+            const voucherIssued = await this.gearApi
+                .voucher
+                .issue(
+                    userAddress,
+                    1e12 * initialTokensInVoucher,
+                    initialExpiredTimeInBlocks,
+                    contractsId
+                );
 
             try {
                 await this.signVoucherAction(
@@ -1165,31 +1276,53 @@ export class SailsCalls {
      */
     vouchersInContract = (
         userAddress: HexString, 
-        contractId?: HexString
+        contractId?: string | HexString
     ): Promise<HexString[]> => {
         return new Promise(async (resolve, reject) => {
-            if (!contractId && !this.contractId) {
-                reject('Contract id not set');
-                return;
+            let contractAddress: HexString;
+
+            if (contractId) {
+                if (contractId.substring(0, 2) != '0x') {
+                    const temp = this.sailsInstances[contractId];
+
+                    if (!temp) {
+                        const error: SailsCallsError = {
+                            sailsCallsError: 'Contract name does not exists'
+                        };
+                        reject(error);
+                        return;
+                    }
+
+                    contractAddress = temp.data.address;
+                } else {
+                    contractAddress = contractId as HexString;
+                }
+            } else {
+                const contractNames = Object.keys(this.sailsInstances)
+
+                if (contractNames.length < 1) {
+                    const error: SailsCallsError = {
+                        sailsCallsError: 'No contracts stored in SailsCalls instance'
+                    };
+
+                    reject(error);
+                    return;
+                }
+
+                const contractName = contractNames[0];
+                const temp = this.sailsInstances[contractName].data.address;
+                contractAddress = temp;
             }
-
-            let temp = contractId
-                ? contractId
-                : this.contractId 
-                ? this.contractId
-                : undefined;
-
-            
 
             const vouchersData = await this
                 .gearApi
                 .voucher
                 .getAllForAccount(
                     userAddress, 
-                    temp
+                    contractAddress
                 );
             const vouchersId = Object.keys(vouchersData);
-            
+
             resolve(vouchersId as HexString[]);
         });
     }
@@ -1439,6 +1572,9 @@ export class SailsCalls {
         return signlessToSend;
     }
 
+    disconnectGearApi = async () => {
+        await this.gearApi.disconnect();
+    }
 
     /**
      * ## Change network for SailsCalls instance
@@ -1446,71 +1582,32 @@ export class SailsCalls {
      * @param network Network to connect 
      * @example
      * const sails = await SailsCalls.new();
-     * sails.withNetwork('wss://testnet.vara.network');
+     * sails.withNetwork('wss://testnet.vara.network');s
      */
-    withNetwork = async (network: string) => {
-        const api = await GearApi.create({ 
-            providerAddress: network 
-        });
+    // withNetwork = async (network: string) => {
+    //     const api = await GearApi.create({ 
+    //         providerAddress: network 
+    //     });
 
-        this.gearApi = api;
-        this.sails.setApi(api);
+    //     this.gearApi = api;
+    //     this.network = network;
+    // }
+
+    // sailsInstanceWithObjectData = (contractId: HexString, idl: string): Sails => {
+    //     const sailsInstance = new Sails(this.sailsParser);
+    //     sailsInstance.
+    // }
+
+    servicesFromSailsInstance = (sailsInstance: Sails): string[] => {
+        return Object.keys(sailsInstance.services);
     }
 
-    /**
-     * ## Change IDL for SailsCalls instance
-     * Set IDL to use for a SailsCalls instance.
-     *      
-     * Throw an error in case of incorrect IDL
-     * @param idl string IDL
-     * @example
-     * const idl = `
-     *     service Ping {
-     *           Ping : (test: str) -> PingEvent;
-     *           query Pong : () -> PingEvent;
-     *     };
-     * `;
-     * const sails = await SailsCalls.new();
-     * sails.withIDL(idl);
-     */
-    withIDL = (idl: string) => {
-        try {
-            this.sails.parseIdl(idl);
-            this.idl = true;
-        } catch (e) {
-            this.idl = false;
-            console.error('Idl not set, it is incorrect');
-        }
-    }
-
-    /**
-     * ## Change contract for SailsCalls instance
-     * Set contract id to use for SailsCalls instance
-     * @param contractId id of contract
-     * @example
-     * const contractId = '0xc1211fecb75b2390...00ae3f5dcf6d6f845b3';
-     * const sails = await SailsCalls.new();
-     * sails.withContractId(contractId);
-     */
-    withContractId = (contractId: HexString) => {
-        this.contractId = contractId;
-    }
-
-    private urlIsCorrect = (url: string) => {
-        return this.regexCompleteUrl.test(url);
-    }
-
-    private urlNoContractIdIsCorrect = (url: string) => {
-        return this.regexNoContractId.test(url);
-    }
-
-    private urlData = (url: string): UrlArrayData | string => {
-        const urlDataArray = url.split('/');
-
-        if (urlDataArray.length < 3 || urlDataArray.length > 3) 
-            return 'the url is incorrect';
-        
-        return urlDataArray as UrlArrayData;
+    serviceFunctionNamesFromSailsInstance = (
+        sailsInstance: Sails,
+        serviceName: string,
+        functionsFrom: "queries" | "functions", 
+    ): string[] => {
+        return Object.keys(sailsInstance.services[serviceName][functionsFrom]);
     }
 
     private processCallBack = async (toCall: CallbackType, callbacks?: SailsCallbacks, block?: HexString) => {
