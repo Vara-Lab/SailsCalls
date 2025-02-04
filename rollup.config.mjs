@@ -20,6 +20,7 @@ export default {
   ],
   external: [
     'sails-js', 
+    'sails-js-parser',
     '@gear-js/api', 
     '@polkadot/api'
   ], // External dependencies

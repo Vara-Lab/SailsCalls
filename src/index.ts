@@ -1,7 +1,3 @@
-// [TODO]: check IUpdateVoucherParams implementation 
-// import { Sails, TransactionBuilder, ZERO_ADDRESS } from "sails-js";
-
-
 /* eslint-disable @typescript-eslint/semi */
 import { Sails, ZERO_ADDRESS } from "sails-js";
 import { SailsIdlParser } from "sails-js-parser";
