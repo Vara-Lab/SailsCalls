@@ -19,7 +19,6 @@ export default {
     typescript(), // TypeScript plugin
   ],
   external: [
-    'axios', 
     'sails-js', 
     '@gear-js/api', 
     '@polkadot/api'

@@ -1,51 +1,153 @@
-import { SailsIdlParser } from 'sails-js-parser';
+import { HexString } from '@gear-js/api';
 import { SailsCalls } from '../../src';
-import { Sails } from 'sails-js';
+import { sailsCallsData } from '../utils';
 
 let sailsCalls: SailsCalls | null = null;
 
 beforeAll(async () => {
-    const x = await SailsIdlParser.new();
-    new  Sails(x);
     sailsCalls = await SailsCalls.new({
-        network: 'wss://testnet.vara.network',
+        network: sailsCallsData.network,
+        newContractsData: [
+            {
+                contractName: 'traffic_light',
+                address: sailsCallsData.contractId as HexString,
+                idl: sailsCallsData.idl
+            }
+        ]
     });
-    // sailsCalls = await SailsCalls.new();
-    // await waitReady();
-    // sailsCalls = await SailsCalls.new({
-    //     network: 'wss://testnet.vara.network',
-    //     voucherSignerData: {
-    //         sponsorName: '',
-    //         sponsorMnemonic: ''
-    //     },
-    //     newContractsData: [
-    //         {
-    //             contractName: 'PingContract',
-    //             address: '0x...',
-    //             idl: `...`
-    //         },
-    //         {
-    //             contractName: 'TrafficContract',
-    //             address: '0x...',
-    //             idl: `...`
-    //         }
-    //     ]
-    // });
-}, 40000);
+});
 
 afterAll(async () => {
     if (sailsCalls) {
         await sailsCalls.disconnectGearApi();
-        console.debug('Api disconnected');
+        console.log('Api disconnected');
     }
-}, 40000);
+});
 
-describe('queries', () => {
-    test('hello world', () => {
-        const x = 'hello';
+describe('Read state tests', () => {
+    // Errors
+    test('Error 1 - No contracts stored', async () => {
+        const sailsIntance = await SailsCalls.new({
+            network: sailsCallsData.network
+        });
 
+        const temp = sailsIntance.query({
+            serviceName: '',
+            methodName: ''
+        });
+
+        await expect(temp).rejects.toMatchObject({
+            sailsCallsError: 'No contracts stored in SailsCalls instance'
+        });
+
+        await sailsIntance.disconnectGearApi();
+    });
+
+    test('Error 2 - bad contract data', async () => {
+        expect(sailsCalls).toBeInstanceOf(SailsCalls);
+    
+        if (!sailsCalls) return;
+    
+        const temp = sailsCalls.query({
+            contractToCall: {
+                address: '0x000',
+                idl: 'testing'
+            },
+            serviceName: '',
+            methodName: ''
+        });
+    
+        await expect(temp).rejects.toHaveProperty('sailsError');
+    });
+
+    test('Error 3 - bad contract name', async () => {
+        expect(sailsCalls).toBeInstanceOf(SailsCalls);
+    
+        if (!sailsCalls) return;
+    
+        const temp = sailsCalls.query({
+            contractToCall: 'testing',
+            serviceName: '',
+            methodName: ''
+        });
+    
+        await expect(temp).rejects.toMatchObject({
+            sailsCallsError: `Contract name 'testing' is not set in SailsCalls instance`
+        });
+    });
+
+    test('Error 4 - Service does not exists', async () => {
+        expect(sailsCalls).toBeInstanceOf(SailsCalls);
+    
+        if (!sailsCalls) return;
+    
+        const temp = sailsCalls.query({
+            serviceName: 'test',
+            methodName: ''
+        });
+    
+        await expect(temp).rejects.toHaveProperty('sailsCallsError', `Service name 'test' does not exists in contract.\nServices: [TrafficLight]`);
+    });
+
+    test('Error 5 - method does not exists', async () => { 
+        expect(sailsCalls).toBeInstanceOf(SailsCalls);
+    
+        if (!sailsCalls) return;
+    
+        const temp = sailsCalls.query({
+            serviceName: 'TrafficLight',
+            methodName: 'test'
+        });
+    
+        await expect(temp).rejects.toHaveProperty('sailsCallsError', `Query name 'test' does not exists in service 'TrafficLight'.\nQueries: [TrafficLight]`)
+    });
+
+    test('Error 6 - Service does not exists in contract data', async () => {
+        expect(sailsCalls).toBeInstanceOf(SailsCalls);
+    
+        if (!sailsCalls) return;
+    
+        const temp = sailsCalls.query({
+            contractToCall: {
+                address: sailsCallsData.contractId as HexString,
+                idl: sailsCallsData.idl
+            },
+            serviceName: 'test',
+            methodName: ''
+        });
+    
+        await expect(temp).rejects.toHaveProperty('sailsCallsError', `Service name 'test' does not exists in contract.\nServices: [TrafficLight]`);
+    });
+    
+    test('Error 7 - method does not exists in contract data', async () => { 
+        expect(sailsCalls).toBeInstanceOf(SailsCalls);
+    
+        if (!sailsCalls) return;
+    
+        const temp = sailsCalls.query({
+            contractToCall: {
+                address: sailsCallsData.contractId as HexString,
+                idl: sailsCallsData.idl
+            },
+            serviceName: 'TrafficLight',
+            methodName: 'test'
+        });
+    
+        await expect(temp).rejects.toHaveProperty('sailsCallsError', `Query name 'test' does not exists in service 'TrafficLight'.\nQueries: [TrafficLight]`)
+    });
+
+    test('read state correct', async () => {
         expect(sailsCalls).toBeInstanceOf(SailsCalls);
 
-        expect(x).toBe('hello');
+        if (!sailsCalls) return;
+
+        const response = await sailsCalls.query({
+            serviceName: 'TrafficLight',
+            methodName: 'TrafficLight'
+        });
+
+        expect(response).toBeInstanceOf(Object);
+        expect(response).toHaveProperty('current_light');
+        expect(response).toHaveProperty('all_users');
     });
 });

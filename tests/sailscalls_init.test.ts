@@ -2,14 +2,6 @@ import type { HexString } from '@gear-js/api';
 import { SailsCalls } from '../src';
 import { sailsCallsData } from './utils';
 
-beforeEach(() => {
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-});
-
-afterEach(() => {
-    (console.error as jest.Mock).mockRestore();
-});
-
 describe('SailsCalls init test', () => {
     test('basic init - network', async () => {
         const sailsCallsInstance = await SailsCalls.new({
@@ -68,12 +60,17 @@ describe('SailsCalls init test', () => {
 describe('SailsCalls init test - Errors', () => {
     test('Error: set sponsor', async () => {
         try {
-            await SailsCalls.new({
+            const temp = await SailsCalls.new({
                 voucherSignerData: {
                     sponsorMnemonic: '',
                     sponsorName: ''
                 }
             });
+
+            if (temp) {
+                temp.disconnectGearApi();
+            }
+            expect(temp).toBeUndefined();
         } catch (e) {
             expect(e).toBeInstanceOf(Object);
             expect(e).toHaveProperty('sailsCallsError', 'Error while set signer account, voucher signer not set');

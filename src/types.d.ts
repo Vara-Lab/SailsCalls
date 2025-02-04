@@ -46,7 +46,7 @@ export interface NewContractData extends ContractData {
  */
 export interface ICreateVoucher {
     /**
-     * ### Contract or contracts to bind the voucher - OPTIONAL
+     * Contract or contracts to bind the voucher - OPTIONAL
      * You can set the contract or contracts to bind the voucher that you wil create, yo can do
      * this in four different ways:
      * - You can not set the contract to bind the voucher, SailsCalls will set the voucher to the first contract stored in the SailsCalls instance
@@ -62,12 +62,14 @@ export interface ICreateVoucher {
      *     // more options ...
      * }; 
      * 
+     * @example
      * // Set the voucher to a contract address
      * const voucherId: ICreateVoucher = {
      *     contractToSetVoucher: '0x...', // Contract address
      *     // more options ...
      * };
      * 
+     * @example
      * // Set the voucher to n contract address (more than one)
      * const voucherId: ICreateVoucher = {
      *     contractToSetVoucher: [
@@ -76,6 +78,8 @@ export interface ICreateVoucher {
      *         // more contracts address
      *     ]
      * };
+     * 
+     * @property {ContractAddress | string | string[]} [contractToSetVoucher] - The contract(s) to bind the voucher.
      */
     contractToSetVoucher?: ContractAddress;
     /**
@@ -92,9 +96,52 @@ export interface ICreateVoucher {
      */
     initialExpiredTimeInBlocks: number;
     /**
+     * ### Active some informative logs
+     */
+    enableLogs?: boolean;
+    /**
      * ## Optional callbacks for voucher creation
      */
     callbacks?: SailsCallbacks;
+}
+
+/**
+ * ## Basic update data for vouchers
+ */
+export interface IBasicUpdateVoucherData {
+    /**
+     * ### Useer addres that is linked to the voucher
+     */
+    userAddress: HexString;
+    /**
+     * ### Voucher id to add tokens
+     */
+    voucherId: string;
+    /**
+     * ### Enable some optional logs
+     */
+    enableLogs?: boolean;
+    /**
+     * Optional callbacks
+     */
+    callbacks?: SailsCallbacks;
+}
+
+/**
+ * ## Interface to add tokens to a voucher
+ */
+export interface ITokensToAddToVoucher extends IBasicUpdateVoucherData {
+    /**
+     * ### Num of tokens to add to voucher
+     */
+    numOfTokens: number;
+}
+
+export interface IRenewVoucherAmountOfBlocks extends IBasicUpdateVoucherData {
+    /**
+     * ### Num of blocks to renew voucher
+     */
+    numOfBlocks: number
 }
 
 /**
@@ -131,7 +178,6 @@ export interface SponsorData {
  * ## Errors from SailsCalls and sails-js
  */
 export interface SailsCallsError {
-    // error: 'message_error' | 'query_error' | 'general_error',
     sailsCallsError?: string;
     sailsError?: string;
     gearError?: string;
@@ -309,6 +355,31 @@ export interface ISailsCommandOptions {
      * - onBlockAsync
      */
     callbacks?: SailsCallbacks;
+    /**
+     * ### Active some informative logs
+     */
+    enableLogs?: boolean;
+}
+
+export interface ICommandResponse {
+    /**
+     * ## The id of the sent message.
+     */
+    msgId: HexString;
+    /**
+     * ## The blockhash of the block that contains the transaction.
+     */
+    blockHash: HexString;
+    /**
+     * ## The transaction hash.
+     */
+    txHash: HexString;
+    /**
+     * ## Response of the contract
+     * 
+     * This field gives you the contract response, you can see the contract IDL to check the contract response type
+     */
+    response: any
 }
 
 /**

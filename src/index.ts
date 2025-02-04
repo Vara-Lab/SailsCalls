@@ -19,6 +19,9 @@ import type {
     NewContractData,
     SailsCallsContractsData,
     ICreateVoucher,
+    IRenewVoucherAmountOfBlocks,
+    ITokensToAddToVoucher,
+    ICommandResponse,
 } from "./types.js";
 import type { IKeyringPair } from "@polkadot/types/types";
 
@@ -51,10 +54,12 @@ export class SailsCalls {
             const sailsInstance = new Sails(parser);
 
             if (contractName.length > 1 && contractName.substring(0, 2) == '0x') {
+                this.gearApi.disconnect();
                 throw new Error(`Cant set contract name: invalid name ${contractName}`);
             }
 
             if (idl.trim() == '') {
+                this.gearApi.disconnect();
                 throw new Error('IDL cant be empty');
             }
 
@@ -64,6 +69,7 @@ export class SailsCalls {
                 sailsInstance.parseIdl(idl);
             } catch (e) {
                 console.error(`Contract data not set for: ${contractName}`);
+                this.gearApi.disconnect();
                 throw new Error((e as Error).message);
             }
 
@@ -195,7 +201,8 @@ export class SailsCalls {
 
                 resolve(sailsInstance);
             } catch (e) {
-                reject((e as Error).message);
+                const error = (e as Error).message;
+                reject(error);
             }
         });
     }
@@ -395,14 +402,14 @@ export class SailsCalls {
      * );
      */
     // command = (url: string, , options?: SailsCommandOptions): Promise<any> => {
-    command = (options: ISailsCommandOptions): Promise<any> => {
+    command = (options: ISailsCommandOptions): Promise<ICommandResponse> => {
         return new Promise(async (resolve, reject) => {
             const {
                 signerData,
                 contractToCall,
                 serviceName,
                 methodName,
-                callArguments = [],
+                callArguments,
                 tokensToSend = 0n,
                 voucherId,
                 gasLimit,
@@ -483,14 +490,18 @@ export class SailsCalls {
             await this.processCallBack('asynconload', callbacks);
             this.processCallBack('onload', callbacks);
 
-            let transaction = contractSailsInstance
+            const temp = contractSailsInstance
                 .services[serviceName]
-                .functions[methodName](...callArguments);
+                .functions[methodName];
+
+            const transaction = callArguments 
+                ? temp(...callArguments) 
+                : temp();
 
             try  {
                 if (gasLimit) {
                     if (typeof gasLimit === 'object') {
-                        transaction.calculateGas(
+                        await transaction.calculateGas(
                             false,
                             gasLimit.extraGasInCalculatedGasFees
                         );
@@ -498,7 +509,7 @@ export class SailsCalls {
                         transaction.withGas(gasLimit);
                     }
                 } else {
-                    transaction.calculateGas();
+                    await transaction.calculateGas(false, 10);
                 }
 
                 if (voucherId) transaction.withVoucher(voucherId);
@@ -513,19 +524,20 @@ export class SailsCalls {
 
                 transaction.withValue(tokensToSend);
 
-                const { blockHash, response } = await transaction.signAndSend();
+                const sailsResponse = await transaction.signAndSend();
 
-                console.log(`blockhash: ${blockHash}`);
+                await this.processCallBack('asynconblock', callbacks, sailsResponse.blockHash);
+                this.processCallBack('onblock', callbacks, sailsResponse.blockHash);
                 
-                await this.processCallBack('asynconblock', callbacks, blockHash);
-                this.processCallBack('onblock', callbacks, blockHash);
-                
-                const serviceResponse = await response();
+                const serviceResponse = await sailsResponse.response();
 
                 await this.processCallBack('asynconsuccess', callbacks);
                 this.processCallBack('onsuccess', callbacks);
 
-                resolve(serviceResponse);
+                resolve({
+                    ...sailsResponse,
+                    response: serviceResponse
+                });
             } catch (e) {
                 const sailsError = (e as Error).message;
                 const error: SailsCallsError = {
@@ -900,6 +912,7 @@ export class SailsCalls {
             userAddress,
             initialTokensInVoucher,
             initialExpiredTimeInBlocks,
+            enableLogs = false,
             callbacks
         } = options;
 
@@ -913,7 +926,7 @@ export class SailsCalls {
 
                         if (!temp) {
                             const error: SailsCallsError = {
-                                sailsCallsError: 'Contract name does not exists'
+                                sailsCallsError: `Contract name '${contractToSetVoucher}' does not exists`
                             };
                             reject(error);
                             return;
@@ -949,13 +962,14 @@ export class SailsCalls {
                     contractsId,
                     initialTokensInVoucher,
                     initialExpiredTimeInBlocks,
+                    enableLogs,
                     callbacks
                 );
 
                 resolve(voucherId);
             } catch (e) {
                 reject(e);
-            }
+            }   
         });
     }
 
@@ -1015,29 +1029,29 @@ export class SailsCalls {
      * );
      * 
      */
-    createVoucherWithContractsId = (
-        userAddress: HexString,
-        contractsId: HexString[],
-        initialTokensInVoucher: number,
-        initialExpiredTimeInBlocks: number,
-        callbacks?: SailsCallbacks
-    ): Promise<HexString> => {
-        return new Promise(async (resolve, reject) => {
-            try {
-                const voucherId = this.generateVoucher(
-                    userAddress,
-                    contractsId,
-                    initialTokensInVoucher,
-                    initialExpiredTimeInBlocks,
-                    callbacks
-                );
+    // createVoucherWithContractsId = (
+    //     userAddress: HexString,
+    //     contractsId: HexString[],
+    //     initialTokensInVoucher: number,
+    //     initialExpiredTimeInBlocks: number,
+    //     callbacks?: SailsCallbacks
+    // ): Promise<HexString> => {
+    //     return new Promise(async (resolve, reject) => {
+    //         try {
+    //             const voucherId = this.generateVoucher(
+    //                 userAddress,
+    //                 contractsId,
+    //                 initialTokensInVoucher,
+    //                 initialExpiredTimeInBlocks,
+    //                 callbacks
+    //             );
 
-                resolve(voucherId);
-            } catch (e) {
-                reject(e);
-            }
-        });
-    }
+    //             resolve(voucherId);
+    //         } catch (e) {
+    //             reject(e);
+    //         }
+    //     });
+    // }
 
 
     private generateVoucher = (
@@ -1045,21 +1059,31 @@ export class SailsCalls {
         contractsId: HexString[],
         initialTokensInVoucher: number,
         initialExpiredTimeInBlocks: number,
+        enableLogs: boolean,
         callbacks?: SailsCallbacks
     ): Promise<HexString> => {
         return new Promise(async (resolve, reject) => {
             if (!this.accountToSignVouchers) {
-                reject('Account to sign vouchers is not set');
+                const error: SailsCallsError = {
+                    sailsCallsError: 'Account to sign vouchers is not set'
+                }
+                reject(error);  
                 return;
             }
 
-            if (initialTokensInVoucher < 2) {
-                reject('Min limit of initial tokens is 2');
+            if (initialTokensInVoucher < 1) {
+                const error: SailsCallsError = {
+                    sailsCallsError: 'Min limit of initial tokens is 1'
+                }
+                reject(error);
                 return;
             }
 
             if (initialExpiredTimeInBlocks < 20) {
-                reject('Min limit of blocks is 20');
+                const error: SailsCallsError = {
+                    sailsCallsError: `Min limit of blocks is 20, given: ${initialExpiredTimeInBlocks}`
+                }
+                reject(error);
                 return;
             }
 
@@ -1075,6 +1099,7 @@ export class SailsCalls {
             try {
                 await this.signVoucherAction(
                     voucherIssued.extrinsic,
+                    enableLogs,
                     callbacks
                 );
 
@@ -1136,15 +1161,27 @@ export class SailsCalls {
      *     }
      * );
      */
-    renewVoucherAmountOfBlocks = (
-        userAddress: HexString,
-        voucherId: HexString,
-        numOfBlocks: number,
-        callbacks?: SailsCallbacks
-    ): Promise<void> => {
+    // renewVoucherAmountOfBlocks = (
+    //     userAddress: HexString,
+    //     voucherId: HexString,
+    //     numOfBlocks: number,
+    //     callbacks?: SailsCallbacks
+    // ): Promise<void> => {
+    renewVoucherAmountOfBlocks = (options: IRenewVoucherAmountOfBlocks): Promise<void> => {
+        const {
+            userAddress,
+            voucherId,
+            numOfBlocks,
+            enableLogs = false,
+            callbacks
+        } = options;
         return new Promise(async (resolve, reject) => {
             if (numOfBlocks < 20) {
-                reject('Minimum block quantity is 20!');
+                const error: SailsCallsError = {
+                    sailsCallsError: `Minimum block quantity is 20, ${numOfBlocks} were given`
+                };
+
+                reject(error);
                 return;
             }
 
@@ -1157,6 +1194,7 @@ export class SailsCalls {
             try {
                 await this.signVoucherAction(
                     voucherUpdate,
+                    enableLogs,
                     callbacks
                 );
 
@@ -1218,19 +1256,31 @@ export class SailsCalls {
      *     }
      * );
      */
-    addTokensToVoucher = (
-        userAddress: HexString,
-        voucherId: string, 
-        numOfTokens: number,
-        callbacks?: SailsCallbacks
-    ): Promise<void> => {
+    // addTokensToVoucher = (
+    //     userAddress: HexString,
+    //     voucherId: string, 
+    //     numOfTokens: number,
+    //     callbacks?: SailsCallbacks
+    // ): Promise<void> => {
+    addTokensToVoucher = (options: ITokensToAddToVoucher): Promise<void> => {
+        const {
+            userAddress,
+            voucherId,
+            numOfTokens,
+            enableLogs = false,
+            callbacks
+        } = options;
         return new Promise(async (resolve, reject) => {
-            if (numOfTokens < 0) {
-                reject('Cant assign negative tokens!');
+            if (numOfTokens <= 0) {
+                const error: SailsCallsError = {
+                    sailsCallsError: `Cant add less than one token: ${numOfTokens} were given`
+                };
+
+                reject(error);
                 return;
             }
 
-            const newVoucherData = { //: IUpdateVoucherParams = {
+            const newVoucherData = {
                 balanceTopUp: 1e12 * numOfTokens
             };
 
@@ -1239,6 +1289,7 @@ export class SailsCalls {
             try {
                 await this.signVoucherAction(
                     voucherUpdate,
+                    enableLogs,
                     callbacks
                 );
 
@@ -1392,7 +1443,11 @@ export class SailsCalls {
     }
 
 
-    private signVoucherAction = (extrinsic: any, callbacks?: SailsCallbacks): Promise<void> => {
+    private signVoucherAction = (
+        extrinsic: any, 
+        enableLogs: boolean,
+        callbacks?: SailsCallbacks
+    ): Promise<void> => {
         return new Promise(async (resolve, reject) => {
             if (!this.accountToSignVouchers) {
                 reject('Account to sign vouchers is not set');
@@ -1404,8 +1459,9 @@ export class SailsCalls {
 
             try {
                 await extrinsic.signAndSend(this.accountToSignVouchers, async (event: any) => {
-                    console.log(event.toHuman());
-                    const extrinsicJSON: any = event.toHuman();
+                    const eventHuman = event.toHuman();
+                    if (enableLogs) console.log(eventHuman);
+                    const extrinsicJSON: any = eventHuman;
                     if (extrinsicJSON && extrinsicJSON.status !== 'Ready') {
                         const objectKey = Object.keys(extrinsicJSON.status)[0];
                         if (objectKey === 'Finalized') {
@@ -1419,9 +1475,11 @@ export class SailsCalls {
                 this.processCallBack('onerror', callbacks);
                 await this.processCallBack('asynconerror', callbacks);
 
-                console.log(e);
+                const error: SailsCallsError = {
+                    gearError: (e as Error).message
+                };
 
-                reject('Error while sign voucher action');
+                reject(error);
             }
         });
     }
