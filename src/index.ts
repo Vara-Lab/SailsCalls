@@ -1,24 +1,2 @@
-export type {
-    GasLimitType,
-    ContractAddress,
-    SailsInstance,
-    SailsCallsContractsData,
-    ContractData,
-    NewContractData,
-    ICreateVoucher,
-    IBasicUpdateVoucherData,
-    ITokensToAddToVoucher,
-    IRenewVoucherAmountOfBlocks,
-    ISailsCalls,
-    SponsorData,
-    SailsCallsError,
-    ISailsQueryOptions,
-    ISailsCommandOptions,
-    ICommandResponse,
-    WalletSigner,
-    SailsCallbacks,
-    CallbackType,
-    AccountSigner,
-    IFormatedKeyring
-} from './types';
+export type * from './types';
 export { SailsCalls } from './SailsCalls';

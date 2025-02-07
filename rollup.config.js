@@ -9,6 +9,8 @@ import { rmSync } from 'node:fs';
 import commonjs from '@rollup/plugin-commonjs';
 import nodeResolve from '@rollup/plugin-node-resolve';
 import typescript from 'rollup-plugin-typescript2';
+import copy from "rollup-plugin-copy";
+// import dts from "rollup-plugin-dts";
 
 function cleanOldBuild() {
   return {
@@ -43,6 +45,9 @@ export default [
           !module.includes('sails-js') &&
           !module.includes('sails-js-parser')
       }),
+      copy({
+        targets: [{ src: "src/types.d.ts", dest: "lib" }]
+      })
     ]
   },
   {
@@ -72,7 +77,7 @@ export default [
       }),
       commonjs()
     ]
-  }
+  },
 ];
 
 // export default {
