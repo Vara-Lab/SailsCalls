@@ -19,7 +19,7 @@ import type {
     ITokensToAddToVoucher,
     ICommandResponse,
     IFormatedKeyring,
-} from "./types.js";
+} from "./sailsCallsTypes";
 import type { IKeyringPair } from "@polkadot/types/types";
 
 export class SailsCalls {

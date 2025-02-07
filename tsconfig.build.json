@@ -3,5 +3,5 @@
     "compilerOptions": {
       "declaration": true
     },
-    "include": ["src", "src/types.d.ts"]
+    "include": ["src"]
   }

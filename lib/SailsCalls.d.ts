@@ -1,7 +1,7 @@
 import { Sails } from "sails-js";
 import type { KeyringPair, KeyringPair$Json } from '@polkadot/keyring/types';
 import type { HexString } from "@gear-js/api/types";
-import type { ISailsCommandOptions, ISailsQueryOptions, ISailsCalls, ICreateVoucher, IRenewVoucherAmountOfBlocks, ITokensToAddToVoucher, ICommandResponse, IFormatedKeyring } from "./types.js";
+import type { ISailsCommandOptions, ISailsQueryOptions, ISailsCalls, ICreateVoucher, IRenewVoucherAmountOfBlocks, ITokensToAddToVoucher, ICommandResponse, IFormatedKeyring } from "./sailsCallsTypes";
 export declare class SailsCalls {
     private sailsInstances;
     private gearApi;
