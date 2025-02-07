@@ -1,7 +1,7 @@
 import { Sails } from "sails-js";
 import type { KeyringPair, KeyringPair$Json } from '@polkadot/keyring/types';
 import type { HexString } from "@gear-js/api/types";
-import type { ISailsCommandOptions, ISailsQueryOptions, ISailsCalls, ICreateVoucher, IRenewVoucherAmountOfBlocks, ITokensToAddToVoucher, ICommandResponse } from "./types.js";
+import type { ISailsCommandOptions, ISailsQueryOptions, ISailsCalls, ICreateVoucher, IRenewVoucherAmountOfBlocks, ITokensToAddToVoucher, ICommandResponse, IFormatedKeyring } from "./types.js";
 export declare class SailsCalls {
     private sailsInstances;
     private gearApi;
@@ -815,7 +815,7 @@ export declare class SailsCalls {
      *
      * console.log(modifiedLockedKeyringPair);
      */
-    modifyPairToContract: (pair: KeyringPair$Json) => any;
+    modifyPairToContract: (pair: KeyringPair$Json) => IFormatedKeyring;
     disconnectGearApi: () => Promise<void>;
     /**
      * ## Change network for SailsCalls instance

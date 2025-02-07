@@ -9,6 +9,14 @@ export type GasLimitType = bigint | { extraGasInCalculatedGasFees: number };
 export type ContractAddress = string | HexString | HexString[];
 
 /**
+ * ## Formated keyring account for contract
+ */
+export interface IFormatedKeyring {
+    address: string,
+    encoded: string
+}
+
+/**
  * ## Interface to store data of SailsIntances
  */
 export interface SailsInstance {

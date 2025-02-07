@@ -18,6 +18,7 @@ import type {
     IRenewVoucherAmountOfBlocks,
     ITokensToAddToVoucher,
     ICommandResponse,
+    IFormatedKeyring,
 } from "./types.js";
 import type { IKeyringPair } from "@polkadot/types/types";
 
@@ -1618,7 +1619,7 @@ export class SailsCalls {
      * 
      * console.log(modifiedLockedKeyringPair);
      */
-    modifyPairToContract = (pair: KeyringPair$Json) => {
+    modifyPairToContract = (pair: KeyringPair$Json): IFormatedKeyring => {
         const signlessToSend = JSON.parse(JSON.stringify(pair));
         delete signlessToSend['encoding'];
         delete signlessToSend['meta'];
