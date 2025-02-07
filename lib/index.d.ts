@@ -1,1 +1,1 @@
-export * from './SailsCalls';
+export * from './SailsCalls.js';
