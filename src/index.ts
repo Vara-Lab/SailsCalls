@@ -18,6 +18,7 @@ export type {
     WalletSigner,
     SailsCallbacks,
     CallbackType,
-    AccountSigner
+    AccountSigner,
+    IFormatedKeyring
 } from './types';
 export { SailsCalls } from './SailsCalls';
