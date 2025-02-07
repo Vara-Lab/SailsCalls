@@ -21,7 +21,7 @@
   },
   "scripts": {
     "cleanlib": "rm -rfv lib",
-    "build": "rollup --config rollup.config.js",
+    "build": "npx rollup --config rollup.config.js",
     "test": "jest --detectOpenHandles"
   },
   "peerDependencies": {
