@@ -1,31 +1,58 @@
 {
   "name": "sailscalls",
   "version": "1.0.0",
-  "main": "index.js",
-  "license": "MIT",
+  "description": "Typescript library for working with Sails programs",
   "type": "module",
-  "description": "",
+  "license": "MIT",
+  "keywords": [
+    "gear",
+    "sails",
+    "sailscalls"
+  ],
+  "main": "./lib/cjs/index.cjs",
+  "module": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./lib/index.js",
+      "require": "./lib/cjs/index.cjs",
+      "types": "./index.d.ts"
+    }
+  },
   "scripts": {
-    "build": "rollup -c",
+    "cleanlib": "rm -rfv lib",
+    "build": "rollup --config rollup.config.js",
     "test": "jest --detectOpenHandles"
   },
-  "dependencies": {
+  "peerDependencies": {
     "@gear-js/api": "0.38.3",
     "@polkadot/api": "13.2.1",
     "sails-js": "0.3.1",
     "sails-js-parser": "0.3.1"
   },
+  "optionalDependencies": {
+    "sails-js-types": "0.3.1",
+    "sails-js-util": "0.3.1"
+  },
   "devDependencies": {
     "@jest/types": "^29.6.3",
     "@polkadot/keyring": "^13.3.1",
+    "@rollup/plugin-commonjs": "^28.0.2",
+    "@rollup/plugin-node-resolve": "^16.0.0",
+    "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^11.1.6",
     "@types/jest": "^29.5.14",
     "jest": "^29.7.0",
     "rollup": "^4.21.2",
-    "sails-js-types": "^0.3.1",
+    "rollup-plugin-dts": "^6.1.1",
+    "rollup-plugin-peer-deps-external": "^2.2.4",
+    "rollup-plugin-typescript2": "^0.36.0",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
     "tslib": "^2.7.0",
     "typescript": "^5.5.4"
-  }
+  },
+  "files": [
+    "lib"
+  ]
 }
