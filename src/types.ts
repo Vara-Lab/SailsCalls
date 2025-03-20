@@ -5,8 +5,15 @@ import type {
 } from "@polkadot/types/types";
 import type { Sails } from "sails-js";
 
+export { SailsCalls } from "./SailsCalls";
+
 export type GasLimitType = bigint | { extraGasInCalculatedGasFees: number };
 export type ContractAddress = string | HexString | HexString[];
+
+export interface ModifiedLockedKeyringPair {
+    address: string,
+    encoded: string
+}
 
 /**
  * ## Formated keyring account for contract
@@ -104,13 +111,13 @@ export interface ICreateVoucher {
      */
     initialExpiredTimeInBlocks: number;
     /**
-     * ### Active some informative logs
-     */
-    enableLogs?: boolean;
-    /**
      * ## Optional callbacks for voucher creation
      */
     callbacks?: SailsCallbacks;
+    /**
+     * ### Active some informative logs
+     */
+    enableLogs?: boolean;
 }
 
 /**
@@ -194,7 +201,7 @@ export interface SailsCallsError {
 /**
  * ## Query options
  */
-export interface ISailsQueryOptions { 
+export interface  ISailsQueryOptions { 
     /**
      * ### Contract to call - OPTIONAL
      * - If you dont pass to this attribute, SailsCalls will use the first 
@@ -253,6 +260,7 @@ export interface ISailsQueryOptions {
 
 /**
  * ## Command options
+ * 
  */
 export interface ISailsCommandOptions {
     /**
@@ -314,10 +322,10 @@ export interface ISailsCommandOptions {
      * @example
      * const options: SailsCommandOptions = {
      *     // One token
-     *     tokensToSend: 1_000_000_000_000n
+     *     tokensToSend: 1
      * };
      */
-    tokensToSend?: bigint;
+    tokensToSend?: number;
     /**
      * ### Voucher id that will be used in the current message - OPTIONAL
      * If voucher id is set, it will be used for current message (HexString).
@@ -330,8 +338,9 @@ export interface ISailsCommandOptions {
      * If not provided, gas will be calculated automatically without extra gas fees.
      * You can set the gas limit in two ways:
      * - As a number, it will be the gas limit to spend in the message
-     * - As an object, it will be the extra gas fees in porcentage to spend in the message,
-     *   for example, if you set 10, it will be 10% of the gas limit to spend in the message
+     * - As an object, it will be the extra gas fees in porcentage to spend in the message
+     *   that will be added in the calculated gas fees by SailsCalls for example, if you set 10, 
+     *   It will be 10% extra gas of the calculated gas plus the automatically calculated gas
      * 
      * The attribute is optional, can be ommited
      * 

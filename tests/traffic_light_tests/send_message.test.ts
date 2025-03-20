@@ -15,6 +15,16 @@ beforeAll(async () => {
                 contractName: 'traffic_light',
                 address: sailsCallsData.contractId as HexString,
                 idl: sailsCallsData.idl
+            },
+            {
+                contractName: 'ping_pong',
+                address: sailsCallsData.contractId as HexString,
+                idl: sailsCallsData.idl
+            },
+            {
+                contractName: 'avalanche',
+                address: sailsCallsData.contractId as HexString,
+                idl: sailsCallsData.idl
             }
         ]
     });

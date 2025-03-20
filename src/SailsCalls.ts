@@ -19,14 +19,15 @@ import type {
     ITokensToAddToVoucher,
     ICommandResponse,
     IFormatedKeyring,
+    ModifiedLockedKeyringPair,
 } from "./types.js";
 import type { IKeyringPair } from "@polkadot/types/types";
+import Big from 'big.js';
 
 export class SailsCalls {
     private sailsInstances: SailsCallsContractsData;
     private gearApi: GearApi;
     private sailsParser: SailsIdlParser;
-    // private network: string;
     private accountToSignVouchers: KeyringPair | null;
 
     private constructor(
@@ -207,32 +208,29 @@ export class SailsCalls {
     /**
      * ## SailsCalls command
      * Method to call a command in the contract (to change state).
-     * 
-     * @param url Url form of the method: 'ContractId/Service/Method' or 'Service/Method' 
-     * in case that contract id is set in SailsCalls instance
-     * @param signerData Signer that will sign the extrinsic (with wallet or KeyringPair)
-     * @param options Optional, arguments for method and callbacks for each state of extrinsic
+     * @param options Attributes for the command:
+     *  - `signerData`: Signer that will sign the extrinsic (with wallet or KeyringPair)
+     *  - `contractToCall`: **OPTIONAL**, contract to call with SailsCalls, you can omit it (SailsCalls will 
+     *    use the first one that you set when you create the instance), set the name of the contract to
+     *    call that you put in the contract data, or with a new ContractData objet.
+     *  - `serviceName`: Name of the service to call in the contract
+     *  - `methodName`: Method from the service to call in the contract
+     *  - `callArguments`: **OPTIONAL**, arguments to send in the message
+     *  - `tokensToSend`: **OPTINAL**, tokens to send with the message
+     *  - `voucherId`: **OPTIONAL**, voucher to bind in the message
+     *  - `gasLimit`: **OPTIONAL**, gas to set in the message, percentage of extra gas from the calculated gas,
+     *     or you can omit it
+     *  - `callbacks`: **OPTIONAL**, optional callbacks that will be called in each state of the command
+     *  - `enableLogs`: **OPTIONAL**, will execute some console.logs
      * @returns Promise with response of the method
      * @example
+     * 
+     * // constants to use as example
      * const contractId = '0xc234d08426b...b03b83afc4d2fd';
-     * const voucherId = '0xc0403jdj03...jfi39gn32l2fw';
-     * const sailsCalls = await SailsCalls.new({
-     *     network: 'wss://testnet.vara.network',
-     *     idl: CONTRACT.idl // String idl
-     * });
+     * const idl = `...`;
+     * const network = 'wss://testnet.vara.network';
      * 
-     * // Call with 'wallet' signer 
-     * const { signer } = await web3FromSource(account.meta.source);
-     * 
-     * const response = await sailsCalls.command(
-     *     `${contractId}/ServiceName/MethodName`,
-     *     {
-     *         userAddress: account.decodedAddress,
-     *         signer
-     *     }
-     * );
-     * 
-     * // Call with KeyringPair
+     * // Keyring pair to use as example
      * const accountName = 'WalletName';
      * const mnemonic = "strong word ...";
      * const keyringPair = await GearKeyring.fromMnemonic(
@@ -240,165 +238,220 @@ export class SailsCalls {
      *     sponsorName
      * );
      * 
-     * const response = await sailsCalls.command(
-     *     `${contractId}/ServiceName/MethodName`,
-     *     keyringPair
-     * );
+     * // SailsCalls instance to use as example
+     * const sailsCalls = await SailsCalls.new({
+     *     network,
+     *     newContractsData: [
+     *         {
+     *             contractName: 'traffic_light',
+     *             address: contractId,
+     *             idl
+     *         },
+     *         {
+     *             contractName: 'ping_pong',
+     *             address: '0x3423...',
+     *             idl: `...`
+     *         }
+     *     ]
+     * });
      * 
-     * // Call with contract id set
-     * // If it is not specified, it will throw an error
-     * sailsCalls.withContractId('0xsjiqw...');
-     * const response = await sailsCalls.command(
-     *     `ServiceName/MethodName`,
-     *     keyringPair
-     * );
+     * // Call with 'wallet' signer 
+     * const { signer } = await web3FromSource(account.meta.source);
      * 
-     * // call using voucher
-     * const response = await sailsCalls.command(
-     *     `ServiceName/MethodName`,
-     *     keyringPair,
-     *     {
-     *         voucherId
-     *     }
-     * );
+     * const response = await sailsCalls.command({ // basic call
+     *     signerData: signer,
+     *     serviceName: 'ServiceName',
+     *     methodName: 'MethodName'
+     * });
      * 
-     * // call with associated value
-     * // It is necessary that the account has tokens available
-     * const response = await sailsCalls.command(
-     *     `${contractId}/ServiceName/MethodName`,
-     *     {
-     *         userAddress: account.decodedAddress,
-     *         signer
+     * // Call with KeyringPair
+     * const response = await sailsCalls.command({ // basic call
+     *     signerData: keyringPair,
+     *     serviceName: 'ServiceName',
+     *     methodName: 'MethodName',
+     * });
+     * 
+     * // Different calls to the contract
+     * // - If contract is not specified, it will 
+     * //   use the firt one that you set (in this case 'traffic_light') (optional attribute)
+     * const response = await sailsCalls.command({ 
+     *     signerData: keyringPair,
+     *     serviceName: 'ServiceName',
+     *     methodName: 'MethodName',
+     * });
+     * 
+     * // - Call using the name of the contract that is stored (optional attribute)
+     * const response = await sailsCalls.command({ 
+     *     signerData: keyringPair,
+     *     contractToCall: 'ping_pong',
+     *     serviceName: 'ServiceName',
+     *     methodName: 'MethodName',
+     * });
+     * 
+     * // - call with a new temporary contract (optional attribute)
+     * const response = await sailsCalls.command({ 
+     *     signerData: keyringPair,
+     *     contractToCall: {
+     *         address: ``;
+     *         idl: `...`;
      *     },
-     *     {
-     *         // Send one token
-     *         tokensToSend: 1_000_000_000_000n,
-     *     }
-     * );
+     *     serviceName: 'ServiceName',
+     *     methodName: 'MethodName',
+     * });
      * 
-     * // Call with all callbacks (all are optionals)
-     * // It includes async-await calls
-     * const response = await sailsCalls.commamd(
-     *     `ServiceName/MethodName`,
-     *     keyringPair,
-     *     {
-     *         callbacks: {
-     *             onLoad() {
-     *                 console.log('Message to send is loading');
-     *             },
-     *             onLoadAsync() {
-     *                 return new Promise(async resolve => {
-     *                     console.log('Loading message with async');
-     *                     resolve();
-     *                 });
-     *             },
-     *             onBlock(blockHash) {
-     *                 console.log(`Block: ${blockHash}`);
-     *             },
-     *             onBlockAsync(blockHash) {
-     *                 return new Promise(async resolve => {
-     *                     console.log(`Block async: ${blockHash}`);
-     *                     resolve();
-     *                 });
-     *             },
-     *             onSuccess() {
-     *                 console.log('Message send successfully!');
-     *             },
-     *             onSuccessAsync() {
-     *                 return new Promise(async resolve => {
-     *                     console.log('Message send!, with async');
-     *                     resolve();
-     *                 });
-     *             },
-     *             onError() {
-     *                 console.log('An error ocurred!');
-     *             },
-     *             onErrorAsync() {
-     *                 return new Promise(async resolve => {
-     *                     console.log('An error ocurred!, with async');
-     *                     resolve();
-     *                 });
-     *             }
+     * // Call with arguments (optional attribute)
+     * const response = await sailsCalls.command({ // basic call
+     *     signerData: signer,
+     *     serviceName: 'ServiceName',
+     *     methodName: 'MethodName',
+     *     callArguments: [
+     *         'first argument',
+     *         3, // second argument
+     *         // more arguments
+     *     ]
+     * });
+     * 
+     * // Call with linked tokens (optional attribute)
+     * const response = await sailsCalls.command({ // basic call
+     *     signerData: signer,
+     *     serviceName: 'ServiceName',
+     *     methodName: 'MethodName',
+     *     tokensToSend: 1 // 1 VARA
+     * });
+     * 
+     * // Call with voucher (optional attribute)
+     * const response = await sailsCalls.command({ // basic call
+     *     signerData: signer,
+     *     serviceName: 'ServiceName',
+     *     methodName: 'MethodName',
+     *     voucherId: '0xfj32...'
+     * });
+     * 
+     * // Call with gasLimit (optional attribute)
+     * // In the previous examples, the gas fees were automatically calculated.
+     * // - call with gas fees set by the user
+     * const response = await sailsCalls.command({ // basic call
+     *     signerData: signer,
+     *     serviceName: 'ServiceName',
+     *     methodName: 'MethodName',
+     *     gasLimit: 1_000_000n // Set the gas limit to spend in the message
+     * });
+     * 
+     * // - Call that adds 10% extra gas fees to the calculated gas fees
+     * const response = await sailsCalls.command({ // basic call
+     *     signerData: signer,
+     *     serviceName: 'ServiceName',
+     *     methodName: 'MethodName',
+     *     gasLimit: {
+     *         extraGasInCalculatedGasFees: 10
+     *     }
+     * });
+     * 
+     * // Call with callbacks (optional attribute)
+     * const response = await sailsCalls.command({ // basic call
+     *     signerData: signer,
+     *     serviceName: 'ServiceName',
+     *     methodName: 'MethodName',
+     *     callbacks: {
+     *         onLoad() {
+     *             console.log('Message to send is loading');
+     *         },
+     *         onLoadAsync() {
+     *             return new Promise(async resolve => {
+     *                 console.log('Loading message with async');
+     *                 resolve();
+     *             });
+     *         },
+     *         onBlock(blockHash) {
+     *             console.log(`Block: ${blockHash}`);
+     *         },
+     *         onBlockAsync(blockHash) {
+     *             return new Promise(async resolve => {
+     *                 console.log(`Block async: ${blockHash}`);
+     *                 resolve();
+     *             });
+     *         },
+     *         onSuccess() {
+     *             console.log('Message send successfully!');
+     *         },
+     *         onSuccessAsync() {
+     *             return new Promise(async resolve => {
+     *                 console.log('Message send!, with async');
+     *                 resolve();
+     *             });
+     *         },
+     *         onError() {
+     *             console.log('An error ocurred!');
+     *         },
+     *         onErrorAsync() {
+     *             return new Promise(async resolve => {
+     *                 console.log('An error ocurred!, with async');
+     *                 resolve();
+     *             });
      *         }
      *     }
-     * );
+     * });
      * 
-     * // Call with arguments
-     * const response = await sailsCalls.command(
-     *     `${contractId}/ServiceName/MethodName`,
-     *     keyringPair,
-     *     {
-     *         callArguments: [
-     *             "Hello!",
-     *             {
-     *                 name: "DAVID",
-     *                 age: 22
-     *             }
-     *             // More arguments
-     *         ]
-     *     }
-     * );
-     * 
-     * // A call with all options
-     * const response = await sailsCalls.commamd(
-     *     `${contractId}/ServiceName/MethodName`,
-     *     {
-     *         userAddress: account.decodedAddress,
-     *         signer
+     * // Call with all arguments
+     * const response = await sailsCalls.command({ // basic call
+     *     signerData: signer,
+     *     contractToCall: {
+     *         address: ``;
+     *         idl: `...`;
      *     },
-     *     {
-     *         voucherId,
-     *         tokensToSend: 1_000_000_000_000n,
-     *         callArguments: [
-     *             "Hello!",
-     *             {
-     *                 name: "DAVID",
-     *                 age: 22
-     *             }
-     *             // More arguments
-     *         ],
-     *         callbacks: {
-     *             onLoad() {
-     *                 console.log('Message to send is loading');
-     *             },
-     *             onLoadAsync() {
-     *                 return new Promise(async resolve => {
-     *                     console.log('Loading message with async');
-     *                     resolve();
-     *                 });
-     *             },
-     *             onBlock(blockHash) {
-     *                 console.log(`Block: ${blockHash}`);
-     *             },
-     *             onBlockAsync(blockHash) {
-     *                 return new Promise(async resolve => {
-     *                     console.log(`Block async: ${blockHash}`);
-     *                     resolve();
-     *                 });
-     *             },
-     *             onSuccess() {
-     *                 console.log('Message send successfully!');
-     *             },
-     *             onSuccessAsync() {
-     *                 return new Promise(async resolve => {
-     *                     console.log('Message send!, with async');
-     *                     resolve();
-     *                 });
-     *             },
-     *             onError() {
-     *                 console.log('An error ocurred!');
-     *             },
-     *             onErrorAsync() {
-     *                 return new Promise(async resolve => {
-     *                     console.log('An error ocurred!, with async');
-     *                     resolve();
-     *                 });
-     *             }
+     *     serviceName: 'ServiceName',
+     *     methodName: 'MethodName',
+     *     callArguments: [
+     *         'first argument',
+     *         3, // second argument
+     *         // more arguments
+     *     ],
+     *     tokensToSend: 1, // 1 VARA
+     *     voucherId: '0xfj32...',
+     *     gasLimit: {
+     *         extraGasInCalculatedGasFees: 10
+     *     },
+     *     callbacks: {
+     *         onLoad() {
+     *             console.log('Message to send is loading');
+     *         },
+     *         onLoadAsync() {
+     *             return new Promise(async resolve => {
+     *                 console.log('Loading message with async');
+     *                 resolve();
+     *             });
+     *         },
+     *         onBlock(blockHash) {
+     *             console.log(`Block: ${blockHash}`);
+     *         },
+     *         onBlockAsync(blockHash) {
+     *             return new Promise(async resolve => {
+     *                 console.log(`Block async: ${blockHash}`);
+     *                 resolve();
+     *             });
+     *         },
+     *         onSuccess() {
+     *             console.log('Message send successfully!');
+     *         },
+     *         onSuccessAsync() {
+     *             return new Promise(async resolve => {
+     *                 console.log('Message send!, with async');
+     *                 resolve();
+     *             });
+     *         },
+     *         onError() {
+     *             console.log('An error ocurred!');
+     *         },
+     *         onErrorAsync() {
+     *             return new Promise(async resolve => {
+     *                 console.log('An error ocurred!, with async');
+     *                 resolve();
+     *             });
      *         }
-     *     }
-     * );
+     *     },
+     *     enableLogs: true
+     * });
      */
-    // command = (url: string, , options?: SailsCommandOptions): Promise<any> => {
     command = (options: ISailsCommandOptions): Promise<ICommandResponse> => {
         return new Promise(async (resolve, reject) => {
             const {
@@ -407,7 +460,7 @@ export class SailsCalls {
                 serviceName,
                 methodName,
                 callArguments,
-                tokensToSend = 0n,
+                tokensToSend,
                 voucherId,
                 gasLimit,
                 callbacks
@@ -519,7 +572,10 @@ export class SailsCalls {
                     transaction.withAccount(keyringPair);
                 }
 
-                transaction.withValue(tokensToSend);
+                if (tokensToSend) {
+                    const tokens = BigInt(tokensToSend) * 1_000_000_000_000n;
+                    transaction.withValue(tokens);
+                }
 
                 const sailsResponse = await transaction.signAndSend();
 
@@ -550,140 +606,168 @@ export class SailsCalls {
     /**
      * ## SailsCalls query
      * Method to call a query in the contract (read state)
-     * @param url Url form of the method: 'ContractId/Service/Method' or 'Service/Method' 
-     * in case that contract id is set in SailsCalls instance
-     * @param options arguments for query and callbacks for each state of query, the user address is optional 
+     * @param options Attributes for query call
+     *  - `contractToCall`: **OPTIONAL**, contract to call with SailsCalls, you can omit it (SailsCalls will 
+     *    use the first one that you set when you create the instance), set the name of the contract to
+     *    call that you put in the contract data, or with a new ContractData objet.
+     *  - `serviceName`: Name of the service to call in the contract
+     *  - `methodName`: Method from the service to call in the contract
+     *  - `userAddress`: **OPTIONAL**, an address is required for queries, if it is not set, ZERO address
+     *    will be sent
+     * - `callArguments`: **OPTIONAL**, arguments to send in the message
+     * - `callbacks`: **OPTIONAL**, optional callbacks that will be called in each state of the command
      * @returns Promise with response of the query
      * @example
+     * 
+     * // constants to use as example
      * const contractId = '0xc234d08426b...b03b83afc4d2fd';
+     * const idl = `...`;
+     * const network = 'wss://testnet.vara.network';
+     * 
+     * // SailsCalls instance to use as example
      * const sailsCalls = await SailsCalls.new({
-     *     network: 'wss://testnet.vara.network',
-     *     idl: CONTRACT.idl // String idl
+     *     network,
+     *     newContractsData: [
+     *         {
+     *             contractName: 'traffic_light',
+     *             address: contractId,
+     *             idl
+     *         },
+     *         {
+     *             contractName: 'ping_pong',
+     *             address: '0x3423...',
+     *             idl: `...`
+     *         }
+     *     ]
      * });
      * 
-     * // Simple query 
-     * // The addres that SailsCalls will use is the 'zero' address
-     * // because userId is not specified
-     * const response = await sailsCalls.query(
-     *     `${contractId}/ServiceName/MethodName`
-     * );
+     * // Simple query
+     * // The address that SailsCalls will use is the 'zero' address
+     * // because userAddress ont specified
+     * // SailsCalls will use the first contract that you specified
+     * // in this case: traffic_light
+     * const response = await sailscalls.query({
+     *     serviceName: 'ServiceName',
+     *     methodName: 'MethodName'
+     * });
      * 
-     * // Simple query with user id
-     * const response = await sailsCalls.query(
-     *     `${contractId}/ServiceName/MethodName`,
-     *     {
-     *         userId: account.decodedAddress
-     *     }
-     * );
+     * // Simple query with user address (optional attribute)
+     * const response = await sailscalls.query({
+     *     serviceName: 'ServiceName',
+     *     methodName: 'MethodName',
+     *     userAddress: '0xjiw2...'
+     * });
      * 
-     * // Query with contract id set 
-     * // If it is not specified, it will throw an error
-     * sailsCalls..withContractId('0xsjiqw...');
-     * const response = await sailsCalls.query(
-     *     `ServiceName/MethodName`,
-     *     {
-     *         userId: account.decodedAddress
-     *     }
-     * );
+     * // Query with different forms to call the contract (optional attribute)
+     * // In the last calls, SailsCalls use the first contract stored in the
+     * // instance
+     * // - Call using the name of the contract that is stored 
+     * const response = await sailscalls.query({
+     *     contractToCall: 'ping_pong',
+     *     serviceName: 'ServiceName',
+     *     methodName: 'MethodName',
+     * });
+     * 
+     * // - call with a new temporary contract 
+     * const response = await sailscalls.query({
+     *     contractToCall: {
+     *         address: '0xue82...';
+     *         idl: `...`;
+     *     },
+     *     serviceName: 'ServiceName',
+     *     methodName: 'MethodName',
+     * });
      * 
      * // Query with arguments
-     * const response = await sailsCalls.query(
-     *     `ServiceName/MethodName`,
-     *     {
-     *         userId: account.decodedAddress,
-     *         callArguments: [
-     *             "Hello",
-     *             {
-     *                 name: 'David',
-     *                 age: 22,
-     *             },
-     *             // etc
-     *         ]
-     *     }
-     * );
+     * const response = await sailscalls.query({
+     *     serviceName: 'ServiceName',
+     *     methodName: 'MethodName',
+     *     callArguments: [
+     *         'first argument',
+     *          2, // Second argument
+     *          // more arguments
+     *     ]
+     * });
      * 
      * // Query with callbacks
-     * const response = await sailsCalls.query(
-     *     `ServiceName/MethodName`,
-     *     {
-     *         userId: account.decodedAddress,
-     *         callbacks: {
-     *             onLoad() {
-     *                 console.log('Message to send is loading');
-     *             },
-     *             onLoadAsync() {
-     *                 return new Promise(async resolve => {
-     *                     console.log('Loading message with async');
-     *                     resolve();
-     *                 });
-     *             },
-     *             onSuccess() {
-     *                 console.log('Message send successfully!');
-     *             },
-     *             onSuccessAsync() {
-     *                 return new Promise(async resolve => {
-     *                     console.log('Message send!, with async');
-     *                     resolve();
-     *                 });
-     *             },
-     *             onError() {
-     *                 console.log('An error ocurred!');
-     *             },
-     *             onErrorAsync() {
-     *                 return new Promise(async resolve => {
-     *                     console.log('An error ocurred!, with async');
-     *                     resolve();
-     *                 });
-     *             }
+     * const response = await sailscalls.query({
+     *     serviceName: 'ServiceName',
+     *     methodName: 'MethodName',
+     *     callbacks: {
+     *         onLoad() {
+     *             console.log('Message to send is loading');
+     *         },
+     *         onLoadAsync() {
+     *             return new Promise(async resolve => {
+     *                 console.log('Loading message with async');
+     *                 resolve();
+     *             });
+     *         },
+     *         onSuccess() {
+     *             console.log('Message send successfully!');
+     *         },
+     *         onSuccessAsync() {
+     *             return new Promise(async resolve => {
+     *                 console.log('Message send!, with async');
+     *                 resolve();
+     *             });
+     *         },
+     *         onError() {
+     *             console.log('An error ocurred!');
+     *         },
+     *         onErrorAsync() {
+     *             return new Promise(async resolve => {
+     *                 console.log('An error ocurred!, with async');
+     *                 resolve();
+     *             });
      *         }
      *     }
-     * );
+     * });
      * 
-     * 
-     * // Query with all options:
-     * const response = await sailsCalls.query(
-     *     `ServiceName/MethodName`,
-     *     {
-     *         userId: account.decodedAddress,
-     *         callArguments: [
-     *             "Hello",
-     *             {
-     *                 name: 'David',
-     *                 age: 22,
-     *             },
-     *             // etc
-     *         ],
-     *         callbacks: {
-     *             onLoad() {
-     *                 console.log('Message to send is loading');
-     *             },
-     *             onLoadAsync() {
-     *                 return new Promise(async resolve => {
-     *                     console.log('Loading message with async');
-     *                     resolve();
-     *                 });
-     *             },
-     *             onSuccess() {
-     *                 console.log('Message send successfully!');
-     *             },
-     *             onSuccessAsync() {
-     *                 return new Promise(async resolve => {
-     *                     console.log('Message send!, with async');
-     *                     resolve();
-     *                 });
-     *             },
-     *             onError() {
-     *                 console.log('An error ocurred!');
-     *             },
-     *             onErrorAsync() {
-     *                 return new Promise(async resolve => {
-     *                     console.log('An error ocurred!, with async');
-     *                     resolve();
-     *                 });
-     *             }
+     * // Query with all attributes
+     * const response = await sailscalls.query({
+     *     contractToCall: {
+     *         address: '0xue82...';
+     *         idl: `...`;
+     *     },
+     *     serviceName: 'ServiceName',
+     *     methodName: 'MethodName',
+     *     userAddress: '0xjiw2...',
+     *     callArguments: [
+     *         'first argument',
+     *          2, // Second argument
+     *          // more arguments
+     *     ],
+     *     callbacks: {
+     *         onLoad() {
+     *             console.log('Message to send is loading');
+     *         },
+     *         onLoadAsync() {
+     *             return new Promise(async resolve => {
+     *                 console.log('Loading message with async');
+     *                 resolve();
+     *             });
+     *         },
+     *         onSuccess() {
+     *             console.log('Message send successfully!');
+     *         },
+     *         onSuccessAsync() {
+     *             return new Promise(async resolve => {
+     *                 console.log('Message send!, with async');
+     *                 resolve();
+     *             });
+     *         },
+     *         onError() {
+     *             console.log('An error ocurred!');
+     *         },
+     *         onErrorAsync() {
+     *             return new Promise(async resolve => {
+     *                 console.log('An error ocurred!, with async');
+     *                 resolve();
+     *             });
      *         }
      *     }
-     * );
+     * });
      * 
      */
     query = (options: ISailsQueryOptions): Promise<any> => {
@@ -837,32 +921,71 @@ export class SailsCalls {
         });
     }
 
-    
-
     /**
      * ## Creates a new voucher
      * Create a new voucher for an address to the stored contract id
      * The instance need to have the contract id "stored" to be able to do this action
-     * @param address User address to afiliate voucher
-     * @param initialTokensInVoucher initial tokens for the voucher
-     * @param initialExpiredTimeInBlocks initial time expiration in blocks
-     * @param callbacks callback for each state of the voucher action
+     * @param options Attributes to create a new voucher
+     *      - `contractToSetVoucher`: **OPTIONAL**, name of the contract that is stored in the SailsCalls instance, or the address to set 
+     *        the voucher.
+     *      - `userAddress`: address from the user to bind the voucher
+     *      - `initialTokensInVoucher`: initial amount of tokens for the voucher.
+     *      - `initialExpiredTimeInBlocks`: initial amount in blocks for expiration time (1200 = 1 hour)
+     *      - `callbacks`: **OPTIONAL**, optional callbacks that will be called in each state of the voucher creation
+     *      - `enableLogs`: **OPTIONAL**, this attribute enable some logs in the method
      * @returns issued voucher id
      * @example
-     * const userAddress = account.decodedAddress; // 0xjfm2...
+     * 
+     * // consts to use as example
+     * const userAddress = '0xue7882...'; 
      * const contractId = '0xeejnf2...';
-     * // You can set the contract id at start of SailsCalls
-     * const sails = await SailsCalls.new({
-     *     contractId
+     * 
+     * const sailsCalls = await SailsCalls.new({
+     *     network: 'wss://testnet.vara.network',
+     *     newContractsData: [
+     *         {
+     *             contractName: "PingContract",
+     *             address: '0x...',
+     *             idl: `...`
+     *         }
+     *     ],
+     *     // To create voucher you need a signer to pay the transactions
+     *     voucherSignerData: {
+     *         sponsorName: 'Name',
+     *         sponsorMnemonic: 'strong void ...'
+     *     }
      * });
      * 
-     * sails.withContractId(contractId); // or later with its method
+     * // Create voucher with necessary data
+     * const voucherId = await sailsCalls.createVoucher({
+     *     userAddress,
+     *     initialTokensInVoucher: 1, // One Vara
+     *     initialExpiredTimeInBlocks: 1_200 // one hour in blocks
+     * });
      * 
-     * const voucherId = await sails.createVoucher(
-     *     userAddress, 
-     *     3, // 3 Varas
-     *     1_200, // Expiration time in blocks (one hour)
-     *     { // All callbacks are optionals
+     * // Create a voucher with fixed and other not stored contract id
+     * // - With the name of the contract that is stored in the SailsCaills instance
+     * const voucherId = await sailsCalls.createVoucher({
+     *     contractToSetVoucher: 'PingContract',
+     *     userAddress,
+     *     initialTokensInVoucher: 1, // One Vara
+     *     initialExpiredTimeInBlocks: 1_200 // one hour in blocks
+     * });
+     * 
+     * // - With a contract id (it will bind the voucher to the address that you specify)
+     * const voucherId = await sailsCalls.createVoucher({
+     *     contractToSetVoucher: '0xjdk232...', // will bind the voucher to this contract
+     *     userAddress,
+     *     initialTokensInVoucher: 1, // One Vara
+     *     initialExpiredTimeInBlocks: 1_200 // one hour in blocks
+     * });
+     * 
+     * // Creating voucher with callbacks in each state of the voucher
+     * const voucherId = await sailsCalls.createVoucher({
+     *     userAddress,
+     *     initialTokensInVoucher: 1, // One Vara
+     *     initialExpiredTimeInBlocks: 1_200, // one hour in blocks
+     *     callbacks: {
      *         onLoad() {
      *             console.log('Voucher will be created');
      *         },
@@ -871,7 +994,7 @@ export class SailsCalls {
      *                 console.log('Async actions');
      *                 console.log('Voucher will be created');
      *                 resolve();
-     *             }
+     *             });
      *         },
      *         onSuccess() {
      *             console.log('Voucher created!');
@@ -881,7 +1004,7 @@ export class SailsCalls {
      *                 console.log('Async actions');
      *                 console.log('Voucher created!');
      *                 resolve();
-     *             }
+     *             });
      *         },
      *         onError() {
      *             console.log('Error while creating voucher');
@@ -891,18 +1014,61 @@ export class SailsCalls {
      *                 console.log('Async actions');
      *                 console.log('Error while creating voucher');
      *                 resolve();
-     *             }
+     *             });
      *         }
      *     }
-     * );
+     * });
+     * 
+     * // Enabling some logs in the call
+     * const voucherId = await sailsCalls.createVoucher({
+     *     userAddress,
+     *     initialTokensInVoucher: 1, // One Vara
+     *     initialExpiredTimeInBlocks: 1_200, // one hour in blocks
+     *     enableLogs: true
+     * });
+     * 
+     * // Create a voucher with all attributes
+     * const voucherId = await sailsCalls.createVoucher({
+     *     contractToSetVoucher: '0xjdk232...', // will bind the voucher to this contract
+     *     userAddress,
+     *     initialTokensInVoucher: 1, // One Vara
+     *     initialExpiredTimeInBlocks: 1_200, // one hour in blocks
+     *     callbacks: {
+     *         onLoad() {
+     *             console.log('Voucher will be created');
+     *         },
+     *         onLoadAsync() {
+     *             return new Promise(async resolve => {
+     *                 console.log('Async actions');
+     *                 console.log('Voucher will be created');
+     *                 resolve();
+     *             });
+     *         },
+     *         onSuccess() {
+     *             console.log('Voucher created!');
+     *         },
+     *         onSuccessAsync() {
+     *             return new Promise(async resolve => {
+     *                 console.log('Async actions');
+     *                 console.log('Voucher created!');
+     *                 resolve();
+     *             });
+     *         },
+     *         onError() {
+     *             console.log('Error while creating voucher');
+     *         },
+     *         onErrorAsync() {
+     *             return new Promise(async resolve => {
+     *                 console.log('Async actions');
+     *                 console.log('Error while creating voucher');
+     *                 resolve();
+     *             });
+     *         }
+     *     },
+     *     enableLogs: true
+     * });
      * 
      */
-    // createVoucher = (
-    //     userAddress: HexString,
-    //     initialTokensInVoucher: number,
-    //     initialExpiredTimeInBlocks: number,
-    //     callbacks?: SailsCallbacks
-    // ): Promise<HexString> => {
     createVoucher = (options: ICreateVoucher): Promise<HexString> => {
         const {
             contractToSetVoucher,
@@ -970,161 +1136,36 @@ export class SailsCalls {
         });
     }
 
-     /**
-     * ## Creates a new voucher
-     * Create a new voucher for an address to specified contracts id
-     * The function create a voucher for an user address and specified contracts id
-     * @param address User address to afiliate voucher
-     * @param contractsId Contracts id to afilliate the voucher
-     * @param initialTokensInVoucher initial tokens for the voucher
-     * @param initialExpiredTimeInBlocks initial time expiration in blocks
-     * @param callbacks callback for each state of the voucher action
-     * @returns issued voucher id
-     * @example
-     * const userAddress = account.decodedAddress; // 0xjfm2...
-     * const contractId = '0xeejnf2...';
-     * // You can set the contract id at start of SailsCalls
-     * const sails = await SailsCalls.new();
-     * 
-     * const voucherId = await sails.createVoucherWithContractId(
-     *     userAddress, 
-     *     [contractId],
-     *     3, // 3 Varas
-     *     1_200, // Expiration time in blocks (one hour)
-     *     { // All callbacks are optionals
-     *         onLoad() {
-     *             console.log('Voucher will be created');
-     *         },
-     *         onLoadAsync() {
-     *             return new Promise(async resolve => {
-     *                 console.log('Async actions');
-     *                 console.log('Voucher will be created');
-     *                 resolve();
-     *             }
-     *         },
-     *         onSuccess() {
-     *             console.log('Voucher created!');
-     *         },
-     *         onSuccessAsync() {
-     *             return new Promise(async resolve => {
-     *                 console.log('Async actions');
-     *                 console.log('Voucher created!');
-     *                 resolve();
-     *             }
-     *         },
-     *         onError() {
-     *             console.log('Error while creating voucher');
-     *         },
-     *         onErrorAsync() {
-     *             return new Promise(async resolve => {
-     *                 console.log('Async actions');
-     *                 console.log('Error while creating voucher');
-     *                 resolve();
-     *             }
-     *         }
-     *     }
-     * );
-     * 
-     */
-    // createVoucherWithContractsId = (
-    //     userAddress: HexString,
-    //     contractsId: HexString[],
-    //     initialTokensInVoucher: number,
-    //     initialExpiredTimeInBlocks: number,
-    //     callbacks?: SailsCallbacks
-    // ): Promise<HexString> => {
-    //     return new Promise(async (resolve, reject) => {
-    //         try {
-    //             const voucherId = this.generateVoucher(
-    //                 userAddress,
-    //                 contractsId,
-    //                 initialTokensInVoucher,
-    //                 initialExpiredTimeInBlocks,
-    //                 callbacks
-    //             );
-
-    //             resolve(voucherId);
-    //         } catch (e) {
-    //             reject(e);
-    //         }
-    //     });
-    // }
-
-
-    private generateVoucher = (
-        userAddress: HexString,
-        contractsId: HexString[],
-        initialTokensInVoucher: number,
-        initialExpiredTimeInBlocks: number,
-        enableLogs: boolean,
-        callbacks?: SailsCallbacks
-    ): Promise<HexString> => {
-        return new Promise(async (resolve, reject) => {
-            if (!this.accountToSignVouchers) {
-                const error: SailsCallsError = {
-                    sailsCallsError: 'Account to sign vouchers is not set'
-                }
-                reject(error);  
-                return;
-            }
-
-            if (initialTokensInVoucher < 1) {
-                const error: SailsCallsError = {
-                    sailsCallsError: 'Min limit of initial tokens is 1'
-                }
-                reject(error);
-                return;
-            }
-
-            if (initialExpiredTimeInBlocks < 20) {
-                const error: SailsCallsError = {
-                    sailsCallsError: `Min limit of blocks is 20, given: ${initialExpiredTimeInBlocks}`
-                }
-                reject(error);
-                return;
-            }
-
-            const voucherIssued = await this.gearApi
-                .voucher
-                .issue(
-                    userAddress,
-                    1e12 * initialTokensInVoucher,
-                    initialExpiredTimeInBlocks,
-                    contractsId
-                );
-
-            try {
-                await this.signVoucherAction(
-                    voucherIssued.extrinsic,
-                    enableLogs,
-                    callbacks
-                );
-
-                resolve(voucherIssued.voucherId);
-            } catch (e) {
-                reject(e);
-            }
-        });
-    }
-
-
     /**
      * ## Renew a voucher at specified blocks
-     * @param userAddress address affiliated with the voucher
-     * @param voucherId voucher id to renew 
-     * @param numOfBlocks number of blocks (min 20)
-     * @param callbacks optional callbacks to each state of the voucher action
+     * @param options attributes to renew an existing voucher:
+     *     - `userAddress`: user address that is linked to the voucher.
+     *     - `voucherId`: voucher id that will be renewed
+     *     - `numOfBlocks`: Num of blocks to renew the voucher 
+     *     - `callbacks`: **OPTIONAL**, callbacks to each state of the voucher action
+     *     - `enableLogs`: **OPTINAL**, enable some logs in the method
      * @returns void
      * @example
-     * const userAddress = account.decodedAddress; // 0xjfm2...
-     * const contractId = '0xeejnf2...';
-     * const sails = await SailsCalls.new();
      * 
-     * await sails.renewVoucherAmountOfBlocks(
+     * const userAddress = '0x384je...';
+     * const contractId = '0xeejnf2...';
+     * const voucherId = '0xhe7892...';
+     * 
+     * const sailsCalls = await SailsCalls.new();
+     * 
+     * // Renew voucher with necessary data
+     * await sailsCalls.renewVoucherAmountOfBlocks({
      *     userAddress,
-     *     contractId,
-     *     1_200, // 1200 blocks = an hour 
-     *     { // All callbacks are optionals
+     *     voucherId,
+     *     numOfBlocks: 1_200, // Renewed one hour
+     * });
+     * 
+     * // Renew voucher with callbacks in each state of the method (all calls are optional)
+     * await sailsCalls.renewVoucherAmountOfBlocks({
+     *     userAddress,
+     *     voucherId,
+     *     numOfBlocks: 1_200, // Renewed one hour
+     *     callbacks: {
      *         onLoad() {
      *             console.log('Voucher will be renewed');
      *         },
@@ -1133,7 +1174,7 @@ export class SailsCalls {
      *                 console.log('Async actions');
      *                 console.log('Voucher will be renewed');
      *                 resolve();
-     *             }
+     *             });
      *         },
      *         onSuccess() {
      *             console.log('Voucher will be renewed');
@@ -1143,7 +1184,7 @@ export class SailsCalls {
      *                 console.log('Async actions');
      *                 console.log('Voucher will be renewed');
      *                 resolve();
-     *             }
+     *             });
      *         },
      *         onError() {
      *             console.log('Voucher will be renewed');
@@ -1153,17 +1194,60 @@ export class SailsCalls {
      *                 console.log('Async actions');
      *                 console.log('Voucher will be renewed');
      *                 resolve();
-     *             }
+     *             });
      *         }
      *     }
-     * );
+     * });
+     * 
+     * // Renew voucher with some logs in the method
+     * await sailsCalls.renewVoucherAmountOfBlocks({
+     *     userAddress,
+     *     voucherId,
+     *     numOfBlocks: 1_200, // Renewed one hour
+     *     enableLogs: true
+     * });
+     * 
+     * // Renew voucher with all attributes 
+     * await sailsCalls.renewVoucherAmountOfBlocks({
+     *     userAddress,
+     *     voucherId,
+     *     numOfBlocks: 1_200, // Renewed one hour
+     *     callbacks: {
+     *         onLoad() {
+     *             console.log('Voucher will be renewed');
+     *         },
+     *         onLoadAsync() {
+     *             return new Promise(async resolve => {
+     *                 console.log('Async actions');
+     *                 console.log('Voucher will be renewed');
+     *                 resolve();
+     *             });
+     *         },
+     *         onSuccess() {
+     *             console.log('Voucher will be renewed');
+     *         },
+     *         onSuccessAsync() {
+     *             return new Promise(async resolve => {
+     *                 console.log('Async actions');
+     *                 console.log('Voucher will be renewed');
+     *                 resolve();
+     *             });
+     *         },
+     *         onError() {
+     *             console.log('Voucher will be renewed');
+     *         },
+     *         onErrorAsync() {
+     *             return new Promise(async resolve => {
+     *                 console.log('Async actions');
+     *                 console.log('Voucher will be renewed');
+     *                 resolve();
+     *             });
+     *         }
+     *     },
+     *     enableLogs: true
+     * });
+     * 
      */
-    // renewVoucherAmountOfBlocks = (
-    //     userAddress: HexString,
-    //     voucherId: HexString,
-    //     numOfBlocks: number,
-    //     callbacks?: SailsCallbacks
-    // ): Promise<void> => {
     renewVoucherAmountOfBlocks = (options: IRenewVoucherAmountOfBlocks): Promise<void> => {
         const {
             userAddress,
@@ -1253,12 +1337,6 @@ export class SailsCalls {
      *     }
      * );
      */
-    // addTokensToVoucher = (
-    //     userAddress: HexString,
-    //     voucherId: string, 
-    //     numOfTokens: number,
-    //     callbacks?: SailsCallbacks
-    // ): Promise<void> => {
     addTokensToVoucher = (options: ITokensToAddToVoucher): Promise<void> => {
         const {
             userAddress,
@@ -1431,56 +1509,12 @@ export class SailsCalls {
     voucherBalance = (voucherId: HexString): Promise<number> => {
         return new Promise(async resolve => {
             const voucherBalance = await this.gearApi.balance.findOut(voucherId);
-            const voucherBalanceFormated = Number(
-                BigInt(voucherBalance.toString()) / 1_000_000_000_000n
-            );
+            const voucherBalanceBig = new Big(voucherBalance.toString());
+            const voucherBalanceFormatted = voucherBalanceBig.div(1_000_000_000_000).toNumber();
 
-            resolve(voucherBalanceFormated);
+            resolve(voucherBalanceFormatted);
         });
     }
-
-
-    private signVoucherAction = (
-        extrinsic: any, 
-        enableLogs: boolean,
-        callbacks?: SailsCallbacks
-    ): Promise<void> => {
-        return new Promise(async (resolve, reject) => {
-            if (!this.accountToSignVouchers) {
-                reject('Account to sign vouchers is not set');
-                return;
-            }
-
-            this.processCallBack('onload', callbacks);
-            await this.processCallBack('asynconload', callbacks);
-
-            try {
-                await extrinsic.signAndSend(this.accountToSignVouchers, async (event: any) => {
-                    const eventHuman = event.toHuman();
-                    if (enableLogs) console.log(eventHuman);
-                    const extrinsicJSON: any = eventHuman;
-                    if (extrinsicJSON && extrinsicJSON.status !== 'Ready') {
-                        const objectKey = Object.keys(extrinsicJSON.status)[0];
-                        if (objectKey === 'Finalized') {
-                            this.processCallBack('onsuccess', callbacks);
-                            await this.processCallBack('asynconsuccess', callbacks);
-                            resolve();
-                        }
-                    }
-                });
-            } catch (e) {
-                this.processCallBack('onerror', callbacks);
-                await this.processCallBack('asynconerror', callbacks);
-
-                const error: SailsCallsError = {
-                    gearError: (e as Error).message
-                };
-
-                reject(error);
-            }
-        });
-    }
-
 
     /**
      * ## Create a new signless account
@@ -1551,40 +1585,46 @@ export class SailsCalls {
 
     /**
      * ## Format keyringPair from contract
-     * Gives a correct format to the blocked signless account that was obtained from the contract, so that it can be unblocked
-     * @param signlessData Account blocked from giving the correct format
-     * @returns Correct signless account (KeyringPair) for later use
+     * Gives a correct format to the blocked keyring account that was obtained from the contract, so that it can be unblocked
+     * @param keyringFromContract Account blocked from giving the correct format
+     * @param keyringName name of the keyring pair
+     * @returns Correct keyring account (KeyringPair) for later use
      * @example
      * const contractId = '0xdf234...';
      * const noWalletAddress = '0x7d7dw2...';
      * const idl = '...';
+     * 
      * const sails = await SailsCalls.new({
-     *     contractId,
-     *     idl
+     *     newContractsData: [
+     *         {
+     *             contractName: 'PingPong',
+     *             address: contractId,
+     *             idl
+     *         }
+     *     ]
      * });
      * 
-     * // Note: Usage example if is used the contract format for signless accounts
+     * // Note: Usage example if is used the contract format for keyring accounts
+     *  
+     * const contractState = await sailsCalls.query({
+     *     serviceName: 'QueryService', // service name example
+     *     methodName: 'KeyringAccountData' // method name example
+     *     callArguments: [
+     *         noWalletAddress
+     *     ]
+     * });
      * 
-     * const keyringPairFromContract = await sails.query(
-     *     'QueryService/SignlessAccountData', // Service and method example
-     *     {
-     *         callArguments: [
-     *             noWalletAddress
-     *         ]
-     *     }
-     * );
-     * 
-     * const { signlessAccountData } = contractState;
+     * const { keyringAccountData } = contractState;
      * 
      * const lockedSignlessData = sails.formatContractSignlessData(
-     *     signlessAccountData,
+     *     keyringAccountData,
      *     'AccountName'
      * );
      * 
      * console.log('Locked signless account');
      * console.log(lockedSignlessData);
      */
-    formatContractSignlessData = (signlessData: any, signlessName: string): KeyringPair$Json => {
+    changeModifiedLockedKeyringPairToOriginalState = (keyringFromContract: ModifiedLockedKeyringPair, keyringName: string): KeyringPair$Json => {
         const temp = {
             encoding: {
                 content: ['pkcs8','sr25519'],
@@ -1592,18 +1632,19 @@ export class SailsCalls {
                 version: '3'
             },
             meta: {
-                name: signlessName
+                name: keyringName
             }
         };
 
-        const formatEncryptedSignlessData = Object.assign(signlessData, temp);
+        const formatEncryptedSignlessData = Object.assign(keyringFromContract, temp) as KeyringPair$Json;
 
         return formatEncryptedSignlessData;
     }
 
     /**
      * ## Modify locked KeyringPair
-     * Gives the correct format to the information of a locked signless account to send it to the contract
+     * Gives the correct format to the data of a locked keyring account to send it to the contract
+     * 
      * @param pair locked signless account to format it
      * @returns locked signless account with the correct format
      * @example
@@ -1615,11 +1656,11 @@ export class SailsCalls {
      * );
      * 
      * // It contains the correct locked KeyringPair format for contract
-     * const modifiedLockedKeyringPair = sails.modifyPairToContract(lockedKeyringPair);
+     * const modifiedLockedKeyringPair = sails.changeLockedKeyringPairForContract(lockedKeyringPair);
      * 
      * console.log(modifiedLockedKeyringPair);
      */
-    modifyPairToContract = (pair: KeyringPair$Json): IFormatedKeyring => {
+    changeLockedKeyringPairForContract = (pair: KeyringPair$Json): IFormatedKeyring => {
         const signlessToSend = JSON.parse(JSON.stringify(pair));
         delete signlessToSend['encoding'];
         delete signlessToSend['meta'];
@@ -1631,28 +1672,6 @@ export class SailsCalls {
         await this.gearApi.disconnect();
     }
 
-    /**
-     * ## Change network for SailsCalls instance
-     * Set a network for a SailsCalls instance
-     * @param network Network to connect 
-     * @example
-     * const sails = await SailsCalls.new();
-     * sails.withNetwork('wss://testnet.vara.network');s
-     */
-    // withNetwork = async (network: string) => {
-    //     const api = await GearApi.create({ 
-    //         providerAddress: network 
-    //     });
-
-    //     this.gearApi = api;
-    //     this.network = network;
-    // }
-
-    // sailsInstanceWithObjectData = (contractId: HexString, idl: string): Sails => {
-    //     const sailsInstance = new Sails(this.sailsParser);
-    //     sailsInstance.
-    // }
-
     servicesFromSailsInstance = (sailsInstance: Sails): string[] => {
         return Object.keys(sailsInstance.services);
     }
@@ -1663,6 +1682,103 @@ export class SailsCalls {
         functionsFrom: "queries" | "functions", 
     ): string[] => {
         return Object.keys(sailsInstance.services[serviceName][functionsFrom]);
+    }
+
+    private generateVoucher = (
+        userAddress: HexString,
+        contractsId: HexString[],
+        initialTokensInVoucher: number,
+        initialExpiredTimeInBlocks: number,
+        enableLogs: boolean,
+        callbacks?: SailsCallbacks
+    ): Promise<HexString> => {
+        return new Promise(async (resolve, reject) => {
+            if (!this.accountToSignVouchers) {
+                const error: SailsCallsError = {
+                    sailsCallsError: 'Account to sign vouchers is not set'
+                }
+                reject(error);  
+                return;
+            }
+
+            if (initialTokensInVoucher < 1) {
+                const error: SailsCallsError = {
+                    sailsCallsError: 'Min limit of initial tokens is 1'
+                }
+                reject(error);
+                return;
+            }
+
+            if (initialExpiredTimeInBlocks < 20) {
+                const error: SailsCallsError = {
+                    sailsCallsError: `Min limit of blocks is 20, given: ${initialExpiredTimeInBlocks}`
+                }
+                reject(error);
+                return;
+            }
+
+            const voucherIssued = await this.gearApi
+                .voucher
+                .issue(
+                    userAddress,
+                    1e12 * initialTokensInVoucher,
+                    initialExpiredTimeInBlocks,
+                    contractsId
+                );
+
+            try {
+                await this.signVoucherAction(
+                    voucherIssued.extrinsic,
+                    enableLogs,
+                    callbacks
+                );
+
+                resolve(voucherIssued.voucherId);
+            } catch (e) {
+                reject(e);
+            }
+        });
+    }
+
+    private signVoucherAction = (
+        extrinsic: any, 
+        enableLogs: boolean,
+        callbacks?: SailsCallbacks
+    ): Promise<void> => {
+        return new Promise(async (resolve, reject) => {
+            if (!this.accountToSignVouchers) {
+                reject('Account to sign vouchers is not set');
+                return;
+            }
+
+            this.processCallBack('onload', callbacks);
+            await this.processCallBack('asynconload', callbacks);
+
+            try {
+                await extrinsic.signAndSend(this.accountToSignVouchers, async (event: any) => {
+                    const eventHuman = event.toHuman();
+                    if (enableLogs) console.log(eventHuman);
+                    const extrinsicJSON: any = eventHuman;
+                    if (extrinsicJSON && extrinsicJSON.status !== 'Ready') {
+                        const objectKey = Object.keys(extrinsicJSON.status)[0];
+                        if (objectKey === 'Finalized') {
+                            this.processCallBack('onsuccess', callbacks);
+                            await this.processCallBack('asynconsuccess', callbacks);
+                            resolve();
+                        }
+                    }
+                });
+            } catch (e) {
+                this.processCallBack('onerror', callbacks);
+                await this.processCallBack('asynconerror', callbacks);
+
+                const error: SailsCallsError = {
+                    gearError: (e as Error).message
+                };
+
+                reject(error);
+            }
+        });
     }
 
     private processCallBack = async (toCall: CallbackType, callbacks?: SailsCallbacks, block?: HexString) => {
@@ -1709,5 +1825,4 @@ export class SailsCalls {
                 return;
         }
     }
-    
 }

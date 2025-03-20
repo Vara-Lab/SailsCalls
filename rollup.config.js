@@ -1,16 +1,7 @@
-// import resolve from '@rollup/plugin-node-resolve';
-// import commonjs from '@rollup/plugin-commonjs';
-// import typescript from '@rollup/plugin-typescript';
-// import dts from 'rollup-plugin-dts'; // create type def files
-// import terser from '@rollup/plugin-terser'; // minify
-// import peerDepsExternal from 'rollup-plugin-peer-deps-external'; // add peer deps in bundle
-// import packageJson from './package.json';
 import { rmSync } from 'node:fs';
 import commonjs from '@rollup/plugin-commonjs';
 import nodeResolve from '@rollup/plugin-node-resolve';
 import typescript from 'rollup-plugin-typescript2';
-import copy from "rollup-plugin-copy";
-// import dts from "rollup-plugin-dts";
 
 function cleanOldBuild() {
   return {
@@ -45,9 +36,6 @@ export default [
           !module.includes('sails-js') &&
           !module.includes('sails-js-parser')
       }),
-      copy({
-        targets: [{ src: "src/types.d.ts", dest: "lib" }]
-      })
     ]
   },
   {
@@ -79,31 +67,3 @@ export default [
     ]
   },
 ];
-
-// export default {
-//   // Entry point of the application
-//   input: 'src/index.ts',
-//   output: [
-//     {
-//       // file: 'dist/index.cjs.js',
-//       file: packageJson.main,
-//       format: 'cjs', // CommonJS for Node.js
-//       sourcemap: true, // Enable source maps
-//     },
-//     {
-//       // file: 'dist/index.esm.js',
-//       file: packageJson.module,
-//       format: 'esm', // ES Modules for the browser
-//       sourcemap: true, // Enable source maps
-//     }
-//   ],
-//   plugins: [
-//     typescript(), // TypeScript plugin
-//   ],
-//   external: [
-//     'sails-js', 
-//     'sails-js-parser',
-//     '@gear-js/api', 
-//     '@polkadot/api'
-//   ], // External dependencies
-// };
