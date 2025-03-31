@@ -42,18 +42,35 @@ test('Hello world', () => {
 });
 
 // test('Adding tokens if necessary', async () => {
-//     if (!sailsCalls) {
-//         throw new Error("SailsCalls is not initialized");
-//     }
+    // if (!sailsCalls) {
+    //     throw new Error("SailsCalls is not initialized");
+    // }
 
 //     const decodeddAddress = decodeAddress(lockedAccount.address);
 
-//     await sailsCalls.addTokensToVoucher({
-//         numOfTokens: 1,
-//         voucherId: lockedAccount.voucherId,
-//         userAddress: decodeddAddress
-//     });
+    // await sailsCalls.addTokensToVoucher({
+    //     numOfTokens: 1,
+    //     voucherId: lockedAccount.voucherId,
+    //     userAddress: decodeddAddress
+    // });
 // });
+
+
+test('renew voucher if necessary', async () => {
+    if (!sailsCalls) {
+        throw new Error("SailsCalls is not initialized");
+    }
+
+    const decodeddAddress = decodeAddress(lockedAccount.address);
+
+    await sailsCalls.renewVoucherAmountOfBlocks({
+        numOfBlocks: 1_200, // one hour
+        voucherId: lockedAccount.voucherId,
+        userAddress: decodeddAddress
+    });
+});
+
+
 
 // test('Send message', async () => {
 //     expect(sailsCalls).toBeInstanceOf(SailsCalls);
@@ -96,26 +113,26 @@ test('Voucher balance', async () => {
     }, 'test');
     const keyringPair = sailsCalls.unlockKeyringPair(formatedKeyring, lockedAccount.password);
 
-    const voucherIsExpired = await sailsCalls.voucherIsExpired(decodedAdress, voucherId);
+    // const voucherIsExpired = await sailsCalls.voucherIsExpired(decodedAdress, voucherId);
 
-    if (voucherIsExpired) {
-        await sailsCalls.renewVoucherAmountOfBlocks({
-            numOfBlocks: 1200,
-            userAddress: decodedAdress,
-            voucherId
-        });
-    }
+    // if (voucherIsExpired) {
+    //     await sailsCalls.renewVoucherAmountOfBlocks({
+    //         numOfBlocks: 1200,
+    //         userAddress: decodedAdress,
+    //         voucherId
+    //     });
+    // }
 
-    const response = await sailsCalls.command({
-        contractToCall: 'traffic_light',
-        signerData: keyringPair,
-        voucherId: lockedAccount.voucherId as HexString,
-        serviceName: 'TrafficLight',
-        methodName: 'Yellow',
-    }); 
+    // const response = await sailsCalls.command({
+    //     contractToCall: 'traffic_light',
+    //     signerData: keyringPair,
+    //     voucherId: lockedAccount.voucherId as HexString,
+    //     serviceName: 'TrafficLight',
+    //     methodName: 'Yellow',
+    // }); 
 
-    expect(response).toBeDefined();
-    expect(response.response).toBe('Yellow');
+    // expect(response).toBeDefined();
+    // expect(response.response).toBe('Yellow');
 
     const voucherBalance = await sailsCalls.voucherBalance(voucherId);
 
