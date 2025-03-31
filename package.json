@@ -24,16 +24,10 @@
     "build": "npx rollup --config rollup.config.js",
     "test": "jest --detectOpenHandles"
   },
-  "dependencies": {
-    "@gear-js/api": "0.38.3",
-    "@polkadot/api": "13.2.1",
-    "big.js": "^6.2.2",
-    "sails-js": "0.3.1",
-    "sails-js-parser": "0.3.1"
-  },
   "peerDependencies": {
     "@gear-js/api": "0.38.3",
     "@polkadot/api": "13.2.1",
+    "big.js": "^6.2.2",
     "sails-js": "0.3.1",
     "sails-js-parser": "0.3.1"
   },
