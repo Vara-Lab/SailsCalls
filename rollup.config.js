@@ -12,22 +12,22 @@ function cleanOldBuild() {
   };
 }
 
-function fixTypesDeclaration() {
-  return {
-    name: 'fix-types-declaration',
-    writeBundle() {
-      const typesFilePath = './lib/types.d.ts';
-      const content = readFileSync(typesFilePath, 'utf-8');
+// function fixTypesDeclaration() {
+//   return {
+//     name: 'fix-types-declaration',
+//     writeBundle() {
+//       const typesFilePath = './lib/types.d.ts';
+//       const content = readFileSync(typesFilePath, 'utf-8');
 
-      const fixedContent = `
-export type * from './types';
-export { SailsCalls } from './SailsCalls';
-      `.trim();
+//       const fixedContent = `
+// export type * from './types';
+// export { SailsCalls } from './SailsCalls';
+//       `.trim();
 
-      writeFileSync(typesFilePath, fixedContent, 'utf-8');
-    },
-  };
-}
+//       writeFileSync(typesFilePath, fixedContent, 'utf-8');
+//     },
+//   };
+// }
 
 export default [
   {
@@ -53,7 +53,7 @@ export default [
           !module.includes('sails-js') &&
           !module.includes('sails-js-parser')
       }),
-      fixTypesDeclaration()
+      // fixTypesDeclaration()
     ]
   },
   {
