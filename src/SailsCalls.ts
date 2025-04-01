@@ -22,7 +22,7 @@ import type {
     ModifiedLockedKeyringPair,
 } from "./types.js";
 import type { IKeyringPair } from "@polkadot/types/types";
-import Big from 'big.js';
+import Decimal from "decimal.js";
 
 export class SailsCalls {
     private sailsInstances: SailsCallsContractsData;
@@ -1509,8 +1509,13 @@ export class SailsCalls {
     voucherBalance = (voucherId: HexString): Promise<number> => {
         return new Promise(async resolve => {
             const voucherBalance = await this.gearApi.balance.findOut(voucherId);
-            const voucherBalanceBig = new Big(voucherBalance.toString());
-            const voucherBalanceFormatted = voucherBalanceBig.div(1_000_000_000_000).toNumber();
+            const balance = new Decimal(voucherBalance.toString());
+            const oneVara = new Decimal('1000000000000');
+
+            // const voucherBalanceBig = new Big(voucherBalance.toString());
+            // const voucherBalanceFormatted = voucherBalanceBig.div(1_000_000_000_000).toNumber();
+
+            const voucherBalanceFormatted = balance.dividedBy(oneVara).toNumber();
 
             resolve(voucherBalanceFormatted);
         });
