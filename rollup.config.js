@@ -51,7 +51,8 @@ export default [
           !module.includes('polkadot') &&
           !module.includes('gear-js/api') &&
           !module.includes('sails-js') &&
-          !module.includes('sails-js-parser')
+          !module.includes('sails-js-parser') &&
+          !module.includes('decimal.js')
       }),
       // fixTypesDeclaration()
     ]
@@ -79,7 +80,8 @@ export default [
           !module.includes('polkadot') &&
           !module.includes('gear-js/api') &&
           !module.includes('sails-js') &&
-          !module.includes('sails-js-parser')
+          !module.includes('sails-js-parser') &&
+          !module.includes('decimal.js')
       }),
       commonjs()
     ]
