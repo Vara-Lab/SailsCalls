@@ -27,6 +27,7 @@
   "peerDependencies": {
     "@gear-js/api": "0.38.3",
     "@polkadot/api": "13.2.1",
+    "decimal.js": "^10.5.0",
     "sails-js": "0.3.1",
     "sails-js-parser": "0.3.1"
   },
