@@ -277,7 +277,7 @@ export declare class SailsCalls {
      * });
      *
      * // Call with all arguments
-     * const response = await sailsCalls.command({ // basic call
+     * const response = await sailsCalls.command({
      *     signerData: signer,
      *     contractToCall: {
      *         address: ``;
@@ -998,6 +998,9 @@ export declare class SailsCalls {
      * console.log(modifiedLockedKeyringPair);
      */
     changeLockedKeyringPairForContract: (pair: KeyringPair$Json) => IFormatedKeyring;
+    /**
+     * ## Disconnect the gear api from SailsCalls instance
+     */
     disconnectGearApi: () => Promise<void>;
     servicesFromSailsInstance: (sailsInstance: Sails) => string[];
     serviceFunctionNamesFromSailsInstance: (sailsInstance: Sails, serviceName: string, functionsFrom: "queries" | "functions") => string[];
