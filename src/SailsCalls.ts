@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/semi */
 import { Sails, ZERO_ADDRESS } from "sails-js";
 import { SailsIdlParser } from "sails-js-parser";
-import type { KeyringPair, KeyringPair$Json } from '@polkadot/keyring/types';
 import { GearApi, GearKeyring } from "@gear-js/api";
+import type { KeyringPair, KeyringPair$Json } from '@polkadot/keyring/types';
 import type { HexString } from "@gear-js/api/types";
 import type { 
     CallbackType, 
@@ -393,7 +393,7 @@ export class SailsCalls {
      * });
      * 
      * // Call with all arguments
-     * const response = await sailsCalls.command({ // basic call
+     * const response = await sailsCalls.command({
      *     signerData: signer,
      *     contractToCall: {
      *         address: ``;
@@ -1511,10 +1511,6 @@ export class SailsCalls {
             const voucherBalance = await this.gearApi.balance.findOut(voucherId);
             const balance = new Decimal(voucherBalance.toString());
             const oneVara = new Decimal('1000000000000');
-
-            // const voucherBalanceBig = new Big(voucherBalance.toString());
-            // const voucherBalanceFormatted = voucherBalanceBig.div(1_000_000_000_000).toNumber();
-
             const voucherBalanceFormatted = balance.dividedBy(oneVara).toNumber();
 
             resolve(voucherBalanceFormatted);
@@ -1673,6 +1669,9 @@ export class SailsCalls {
         return signlessToSend;
     }
 
+    /**
+     * ## Disconnect the gear api from SailsCalls instance
+     */
     disconnectGearApi = async () => {
         await this.gearApi.disconnect();
     }

@@ -2970,15 +2970,31 @@ safe-buffer@^5.1.0:
   resolved "https://registry.yarnpkg.com/safe-buffer/-/safe-buffer-5.2.1.tgz#1eaf9fa9bdb1fdd4ec75f58f9cdb4e6b7827eec6"
   integrity sha512-rp3So07KcdmmKbGvgaNxQSJr7bGVSVk5S9Eq1F+ppbRo70+YeaDxkw5Dd8NPN+GD6bjnYm2VuPuCXmpuYvmCXQ==
 
-sails-js-parser@0.3.1:
-  version "0.3.1"
-  resolved "https://registry.yarnpkg.com/sails-js-parser/-/sails-js-parser-0.3.1.tgz#f671bfb5b9c50ce31c97249252fb79719fc310d5"
-  integrity sha512-G/ITC8perMP2j6hs2ePDZcowndMoOtKaFxLHjfwBuZ948ttLuTNP7QpJxbp7KzEZzRX5iS2Tw3dwoTsiiiSVTg==
+sails-js-parser@0.4.1:
+  version "0.4.1"
+  resolved "https://registry.yarnpkg.com/sails-js-parser/-/sails-js-parser-0.4.1.tgz#85a2d2fb164a1f144bae72802038de75bb97767c"
+  integrity sha512-r1hZOcnzgIxO3igFA8nddHGIQeTr5RutzwBah11JRKk1MpR+HrCeqM1FFrtNWSFmydzFhZlnyYuiCy4MPYCIMA==
+  optionalDependencies:
+    sails-js-types "0.4.1"
 
-sails-js@0.3.1:
-  version "0.3.1"
-  resolved "https://registry.yarnpkg.com/sails-js/-/sails-js-0.3.1.tgz#22ff70568c1fb789cbdaed53e55ac2a0a8046221"
-  integrity sha512-zqs+C7jL9P7q7tPzSd7MhoHUAY8uCHEdEfl7QhmmmTFOhZlY487VndoPUa9qkue18VIp5eAHK+1ong0MRCc1ig==
+sails-js-types@0.4.1:
+  version "0.4.1"
+  resolved "https://registry.yarnpkg.com/sails-js-types/-/sails-js-types-0.4.1.tgz#afbd0433f7237be00e35d6fbcf671f47a22b36f8"
+  integrity sha512-3e/86n25949oQbOMEr5Vx/ZlgmUslY44p8Z3m5Leo+6scJXrjEHofd43o3uAULat6QKE/R2dmkdMnKh8nwivvA==
+
+sails-js-util@0.4.1:
+  version "0.4.1"
+  resolved "https://registry.yarnpkg.com/sails-js-util/-/sails-js-util-0.4.1.tgz#46ea297657e5e4155261d36969872e1ff1720ff1"
+  integrity sha512-wuYV7yn6akMOIU6Kk6CWdk41A2LUhTWvn81TSY13CqpydJw4OwzNu013kSzj7hpuXAtYLnDruz0PsBZpAG/WeA==
+
+sails-js@0.4.1:
+  version "0.4.1"
+  resolved "https://registry.yarnpkg.com/sails-js/-/sails-js-0.4.1.tgz#20f639e6fa31da70313df1b8fa597bd3f08252e9"
+  integrity sha512-C/rn5zXbc+AZpedksXUuE/nZ/Z/PyCNNqr18HP5RGMqQXYgZt8uq5pKgyEUBYiR74lbq2b3bW2hAKOERJl8wHg==
+  dependencies:
+    sails-js-util "0.4.1"
+  optionalDependencies:
+    sails-js-types "0.4.1"
 
 scale-ts@^1.6.0:
   version "1.6.1"
