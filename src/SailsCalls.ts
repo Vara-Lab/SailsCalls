@@ -3,7 +3,7 @@ import { Sails, ZERO_ADDRESS } from "sails-js";
 import { SailsIdlParser } from "sails-js-parser";
 import { GearApi, GearKeyring } from "@gear-js/api";
 import type { KeyringPair, KeyringPair$Json } from '@polkadot/keyring/types';
-import type { HexString } from "@gear-js/api/types";
+import type { HexString } from "@gear-js/api";
 import type { 
     CallbackType, 
     SailsCallbacks, 
