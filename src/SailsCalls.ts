@@ -468,6 +468,8 @@ export class SailsCalls {
 
             let contractSailsInstance: Sails;
 
+            console.log('Se preparara el mensaje');
+
             if (contractToCall) {
                 if (typeof contractToCall === 'string') {
                     const temp = this.sailsInstances[contractToCall];
@@ -511,6 +513,9 @@ export class SailsCalls {
                 contractSailsInstance = this.sailsInstances[contractNames[0]].sailsInstance;
             }
 
+            console.log('Ya se tiene la instancia de sails a usar para llamar al contrato:')
+            console.log(contractSailsInstance);
+
             const serviceNames = this.servicesFromSailsInstance(contractSailsInstance);
 
             if (!serviceNames.includes(serviceName)) {
@@ -537,6 +542,8 @@ export class SailsCalls {
                 return;
             }
 
+            console.log(`Se verifico que el servicio ${serviceName} y el metodo ${methodName} existan`);
+
             await this.processCallBack('asynconload', callbacks);
             this.processCallBack('onload', callbacks);
 
@@ -548,22 +555,27 @@ export class SailsCalls {
                 ? temp(...callArguments) 
                 : temp();
 
+            console.log('Ya se creo la transaccion!');
+
             try  {
                 if (gasLimit) {
                     if (typeof gasLimit === 'object') {
+                        console.log('Se calculara el gas a utilizar');
                         await transaction.calculateGas(
                             false,
                             gasLimit.extraGasInCalculatedGasFees
                         );
+                        console.log('Ya se calculo el gas a utilizar');
                     } else {
                         transaction.withGas(gasLimit);
                     }
                 } else {
                     await transaction.calculateGas(false, 10);
                 }
-
+            
                 if (voucherId) transaction.withVoucher(voucherId);
 
+               console.log('Se establecera el que firmara');
                 if ('signer' in signerData) {
                     const { userAddress, signer } = signerData as WalletSigner;
                     transaction.withAccount(userAddress, { signer });
@@ -572,17 +584,23 @@ export class SailsCalls {
                     transaction.withAccount(keyringPair);
                 }
 
+                console.log('Se establecio!');
+
                 if (tokensToSend) {
                     const tokens = BigInt(tokensToSend) * 1_000_000_000_000n;
                     transaction.withValue(tokens);
                 }
 
+                console.log('POr ultimo, se va a firmar la mdre!!');
                 const sailsResponse = await transaction.signAndSend();
+                console.log('SE FIRMO!!!');
 
                 await this.processCallBack('asynconblock', callbacks, sailsResponse.blockHash);
                 this.processCallBack('onblock', callbacks, sailsResponse.blockHash);
                 
+                console.log('Se va a esperar a por una respuesta');
                 const serviceResponse = await sailsResponse.response();
+                console.log('Se espero a por la respuesta!!!');
 
                 await this.processCallBack('asynconsuccess', callbacks);
                 this.processCallBack('onsuccess', callbacks);
@@ -592,6 +610,8 @@ export class SailsCalls {
                     response: serviceResponse
                 });
             } catch (e) {
+                console.log('No pues valio riata, el error');
+                console.log(e);
                 const sailsError = (e as Error).message;
                 const error: SailsCallsError = {
                     sailsCallsError: 'error while sending message',
