@@ -846,6 +846,8 @@ export class SailsCalls {
                 contractSailsInstance = this.sailsInstances[contractNames[0]].sailsInstance;
             }
 
+            console.log('Se escogio el contrato a llamar!');
+
             const serviceNames = this.servicesFromSailsInstance(contractSailsInstance);
 
             if (!serviceNames.includes(serviceName)) {
@@ -872,12 +874,16 @@ export class SailsCalls {
                 return;
             }
 
+            console.log(`Se verifico que el servicio ${serviceName} y el metodo ${methodName} existan`);
+
             await this.processCallBack('asynconload', callbacks);
             this.processCallBack('onload', callbacks);
 
             const queryMethod = contractSailsInstance
                 .services[serviceName]
                 .queries[methodName];
+
+            console.log('Se tomo el metodo query');
 
             try {
                 const queryResponse = await queryMethod(
@@ -887,11 +893,15 @@ export class SailsCalls {
                     ...callArguments
                 );
 
+                console.log('Se mando la query!!!!!!!!!!!!!!')
+
                 await this.processCallBack('asynconsuccess', callbacks);
                 this.processCallBack('onsuccess', callbacks);
 
                 resolve(queryResponse);
             } catch(e) {
+                console.log('No pues valio vrga');
+                console.log(e);
                 await this.processCallBack('asynconerror', callbacks);
                 this.processCallBack('onerror', callbacks);
 
