@@ -1,5 +1,6 @@
-import type { HexString } from "@gear-js/api";
-import type { IKeyringPair, Signer } from "@polkadot/types/types";
+import type { GearApi, HexString } from "@gear-js/api";
+import type { Signer } from "@polkadot/api/types";
+import type { KeyringPair } from "@polkadot/keyring/types";
 import type { Sails } from "sails-js";
 export { SailsCalls } from "./SailsCalls";
 export type GasLimitType = bigint | {
@@ -164,6 +165,11 @@ export interface ISailsCalls {
      * if not provided, vouchers feature cant be used
      */
     voucherSignerData?: SponsorData;
+    /**
+     * ### Gear API
+     * if not provided, SailsCalls will create its own Gear API
+     */
+    gearApi?: GearApi;
 }
 /**
  * ## Sponsor data
@@ -461,4 +467,4 @@ export interface SailsCallbacks {
     onBlockAsync?: (blockHash?: HexString) => Promise<void>;
 }
 export type CallbackType = 'onsuccess' | 'asynconsuccess' | 'onerror' | 'asynconerror' | 'onload' | 'asynconload' | 'onblock' | 'asynconblock';
-export type AccountSigner = IKeyringPair | WalletSigner;
+export type AccountSigner = KeyringPair | WalletSigner;
