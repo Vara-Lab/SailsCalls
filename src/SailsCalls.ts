@@ -21,7 +21,6 @@ import type {
     IFormatedKeyring,
     ModifiedLockedKeyringPair,
 } from "./types.js";
-import type { IKeyringPair } from "@polkadot/types/types";
 import Decimal from "decimal.js";
 
 export class SailsCalls {
@@ -163,7 +162,8 @@ export class SailsCalls {
             const {
                 newContractsData = [],
                 network = 'ws://localhost:9944',
-                voucherSignerData
+                voucherSignerData,
+                gearApi
             } = data || {};
 
             let voucherSigner: KeyringPair | null = null;
@@ -183,9 +183,11 @@ export class SailsCalls {
                 }
             }
 
-            const api = await GearApi.create({ 
-                providerAddress: network 
-            });
+            const api = gearApi
+                ? gearApi
+                : await GearApi.create({ 
+                    providerAddress: network 
+                  });
 
             const sailsParser = await SailsIdlParser.new();
             try {
@@ -568,7 +570,7 @@ export class SailsCalls {
                     const { userAddress, signer } = signerData as WalletSigner;
                     transaction.withAccount(userAddress, { signer });
                 } else {
-                    const keyringPair = signerData as IKeyringPair;
+                    const keyringPair = signerData as KeyringPair;
                     transaction.withAccount(keyringPair);
                 }
 

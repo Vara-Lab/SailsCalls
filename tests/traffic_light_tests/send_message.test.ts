@@ -2,14 +2,19 @@ import { GearKeyring, type HexString } from "@gear-js/api";
 import { SailsCalls } from "../../src";
 import { sailsCallsData } from "../utils";
 import { KeyringPair } from "@polkadot/keyring/types";
+import { GearApi } from "@gear-js/api";
 
 let sailsCalls: SailsCalls | null = null;
 let sponsorKeyring: KeyringPair | null = null;
 
 beforeAll(async () => {
     const { sponsorMnemonic, sponsorName } = sailsCallsData.voucherSignerData;
+    const api =  await GearApi.create({ 
+        providerAddress: 'wss://testnet.vara.network' 
+    });
     sailsCalls = await SailsCalls.new({
-        network: sailsCallsData.network,
+        gearApi: api,
+        // network: sailsCallsData.network,
         newContractsData: [
             {
                 contractName: 'traffic_light',
