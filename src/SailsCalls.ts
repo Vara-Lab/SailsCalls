@@ -77,6 +77,10 @@ export class SailsCalls {
         }
     }
 
+    get getGearApi(): GearApi {
+        return this.gearApi;
+    }
+
     /**
      * ## Returs a new SailsCalls instance
      * - Static method that returns a new instance of SailsCalls

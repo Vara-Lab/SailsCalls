@@ -1,4 +1,5 @@
 import { Sails } from "sails-js";
+import { GearApi } from "@gear-js/api";
 import type { KeyringPair, KeyringPair$Json } from '@polkadot/keyring/types';
 import type { HexString } from "@gear-js/api";
 import type { ISailsCommandOptions, ISailsQueryOptions, ISailsCalls, ICreateVoucher, IRenewVoucherAmountOfBlocks, ITokensToAddToVoucher, ICommandResponse, IFormatedKeyring, ModifiedLockedKeyringPair } from "./types.js";
@@ -8,6 +9,7 @@ export declare class SailsCalls {
     private sailsParser;
     private accountToSignVouchers;
     private constructor();
+    get getGearApi(): GearApi;
     /**
      * ## Returs a new SailsCalls instance
      * - Static method that returns a new instance of SailsCalls
