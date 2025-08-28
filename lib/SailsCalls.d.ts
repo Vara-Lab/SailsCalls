@@ -11,6 +11,12 @@ export declare class SailsCalls {
     private constructor();
     get getGearApi(): GearApi;
     /**
+     * ## Returns the sails instance of a contract
+     * @param contractName OPTIONAL - Contract name set in sailscalls
+     * @returns Sails instance of the contract
+     */
+    sailsInstanceOfContract(contractName?: string): Sails;
+    /**
      * ## Returs a new SailsCalls instance
      * - Static method that returns a new instance of SailsCalls
      * - The parameter is optional, and its attributes are optionals too:

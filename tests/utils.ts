@@ -25,7 +25,8 @@ export const sailsCallsData = {
         };
     `,
     voucherSignerData: {
-        sponsorName: 'admindavid',
-        sponsorMnemonic: 'strong orchard plastic arena pyramid lobster lonely rich stomach label clog rubber'
+        sponsorName: '',
+        sponsorMnemonic: ''
     }
 };
+

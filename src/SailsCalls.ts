@@ -82,6 +82,39 @@ export class SailsCalls {
     }
 
     /**
+     * ## Returns the sails instance of a contract
+     * @param contractName OPTIONAL - Contract name set in sailscalls
+     * @returns Sails instance of the contract
+     */
+    sailsInstanceOfContract(contractName?: string): Sails {
+        if (contractName) {
+            const temp = this.sailsInstances[contractName];
+
+            if (!temp) {
+                const error: SailsCallsError = {
+                    sailsCallsError: `Contract name '${contractName}' is not set in SailsCalls instance`
+                };
+
+                throw new Error(JSON.stringify(error));
+            }
+
+            return temp.sailsInstance;
+        } else {
+            const contractNames = Object.keys(this.sailsInstances);
+
+            if (contractNames.length < 1) {
+                const error: SailsCallsError = {
+                    sailsCallsError: 'No contracts stored in SailsCalls instance'
+                };
+
+                throw new Error(JSON.stringify(error));
+            }
+
+            return this.sailsInstances[contractNames[0]].sailsInstance;
+        }
+    }
+
+    /**
      * ## Returs a new SailsCalls instance
      * - Static method that returns a new instance of SailsCalls
      * - The parameter is optional, and its attributes are optionals too:
@@ -558,14 +591,14 @@ export class SailsCalls {
                 if (gasLimit) {
                     if (typeof gasLimit === 'object') {
                         await transaction.calculateGas(
-                            false,
+                            true,
                             gasLimit.extraGasInCalculatedGasFees
                         );
                     } else {
                         transaction.withGas(gasLimit);
                     }
                 } else {
-                    await transaction.calculateGas(false, 10);
+                    await transaction.calculateGas(true, 10);
                 }
 
                 if (voucherId) transaction.withVoucher(voucherId);
@@ -598,6 +631,7 @@ export class SailsCalls {
                     response: serviceResponse
                 });
             } catch (e) {
+                console.log(e);
                 const sailsError = (e as Error).message;
                 const error: SailsCallsError = {
                     sailsCallsError: 'error while sending message',

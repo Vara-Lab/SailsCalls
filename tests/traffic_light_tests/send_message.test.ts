@@ -9,9 +9,11 @@ let sponsorKeyring: KeyringPair | null = null;
 
 beforeAll(async () => {
     const { sponsorMnemonic, sponsorName } = sailsCallsData.voucherSignerData;
+
     const api =  await GearApi.create({ 
         providerAddress: 'wss://testnet.vara.network' 
     });
+    
     sailsCalls = await SailsCalls.new({
         gearApi: api,
         // network: sailsCallsData.network,
