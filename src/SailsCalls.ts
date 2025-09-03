@@ -77,6 +77,9 @@ export class SailsCalls {
         }
     }
 
+    /**
+     * ## Returns the gear api of sailscalls instance
+     */
     get getGearApi(): GearApi {
         return this.gearApi;
     }
@@ -588,21 +591,6 @@ export class SailsCalls {
                 : temp();
 
             try  {
-                if (gasLimit) {
-                    if (typeof gasLimit === 'object') {
-                        await transaction.calculateGas(
-                            true,
-                            gasLimit.extraGasInCalculatedGasFees
-                        );
-                    } else {
-                        transaction.withGas(gasLimit);
-                    }
-                } else {
-                    await transaction.calculateGas(true, 10);
-                }
-
-                if (voucherId) transaction.withVoucher(voucherId);
-
                 if ('signer' in signerData) {
                     const { userAddress, signer } = signerData as WalletSigner;
                     transaction.withAccount(userAddress, { signer });
@@ -614,6 +602,21 @@ export class SailsCalls {
                 if (tokensToSend) {
                     const tokens = BigInt(tokensToSend) * 1_000_000_000_000n;
                     transaction.withValue(tokens);
+                }
+                
+                if (voucherId) transaction.withVoucher(voucherId);
+
+                if (gasLimit) {
+                    if (typeof gasLimit === 'object') {
+                        await transaction.calculateGas(
+                            true,
+                            gasLimit.extraGasInCalculatedGasFees
+                        );
+                    } else {
+                        transaction.withGas(gasLimit);
+                    }
+                } else {
+                    await transaction.calculateGas(true, 10);
                 }
 
                 const sailsResponse = await transaction.signAndSend();
@@ -655,7 +658,7 @@ export class SailsCalls {
      *  - `userAddress`: **OPTIONAL**, an address is required for queries, if it is not set, ZERO address
      *    will be sent
      * - `callArguments`: **OPTIONAL**, arguments to send in the message
-     * - `callbacks`: **OPTIONAL**, optional callbacks that will be called in each state of the command
+     * - `callbacks`: **OPTIONAL**, optional callbacks that will be called in each state of the query
      * @returns Promise with response of the query
      * @example
      * 
