@@ -9,6 +9,9 @@ export declare class SailsCalls {
     private sailsParser;
     private accountToSignVouchers;
     private constructor();
+    /**
+     * ## Returns the gear api of sailscalls instance
+     */
     get getGearApi(): GearApi;
     /**
      * ## Returns the sails instance of a contract
@@ -357,7 +360,7 @@ export declare class SailsCalls {
      *  - `userAddress`: **OPTIONAL**, an address is required for queries, if it is not set, ZERO address
      *    will be sent
      * - `callArguments`: **OPTIONAL**, arguments to send in the message
-     * - `callbacks`: **OPTIONAL**, optional callbacks that will be called in each state of the command
+     * - `callbacks`: **OPTIONAL**, optional callbacks that will be called in each state of the query
      * @returns Promise with response of the query
      * @example
      *
