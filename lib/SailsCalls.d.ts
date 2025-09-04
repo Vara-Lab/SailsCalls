@@ -12,7 +12,11 @@ export declare class SailsCalls {
     /**
      * ## Returns the gear api of sailscalls instance
      */
-    get getGearApi(): GearApi;
+    get sailsCallsGearApi(): GearApi;
+    /**
+     * ## Returns sailscalls provider keyring
+     */
+    get sponsorKeyring(): KeyringPair | null;
     /**
      * ## Returns the sails instance of a contract
      * @param contractName OPTIONAL - Contract name set in sailscalls

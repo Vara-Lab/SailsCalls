@@ -80,8 +80,15 @@ export class SailsCalls {
     /**
      * ## Returns the gear api of sailscalls instance
      */
-    get getGearApi(): GearApi {
+    get sailsCallsGearApi(): GearApi {
         return this.gearApi;
+    }
+    
+    /**
+     * ## Returns sailscalls provider keyring
+     */
+    get sponsorKeyring(): KeyringPair | null {
+        return this.accountToSignVouchers;
     }
 
     /**
