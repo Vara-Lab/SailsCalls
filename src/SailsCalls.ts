@@ -1524,11 +1524,21 @@ export class SailsCalls {
         userAddress: HexString, 
         voucherId: HexString
     ): Promise<boolean> => {
-        return new Promise(async resolve => {
+        return new Promise(async (resolve, reject) => {
             const voucherData = await this
                 .gearApi
                 .voucher
                 .getDetails(userAddress, voucherId);
+
+            if (!voucherData) {
+                const error: SailsCallsError = {
+                    sailsCallsError: "User is not the owner of the voucher"
+                };
+
+                reject(error);
+                return;
+            }
+
             const blockHash = await this
                 .gearApi
                 .blocks
