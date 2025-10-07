@@ -2,7 +2,6 @@ import type { GearApi, HexString } from "@gear-js/api";
 import type { Signer } from "@polkadot/api/types";
 import type { KeyringPair } from "@polkadot/keyring/types";
 import type { Sails } from "sails-js";
-export { SailsCalls } from "./SailsCalls";
 export type GasLimitType = bigint | {
     extraGasInCalculatedGasFees: number;
 };

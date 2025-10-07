@@ -139,6 +139,137 @@ export class SailsCalls {
      * @example
      * // Returns SailsCalls instance with no contracts data.
      * // With network: ws://localhost:9944
+     * const sailsCalls = await SailsCalls.create();
+     * 
+     * // Returns SailsCalls instance with no contracts data.
+     * // With Network: wss://testnet.vara.network
+     * const sailsCalls = await SailsCalls.create({
+     *     network: 'wss://testnet.vara.network'
+     * });
+     * 
+     * // Returns SailsCalls instance with no contracts data.
+     * // With voucher signer and Network: wss://testnet.vara.network
+     * const sailsCalls = await SailsCalls.create({
+     *     network: 'wss://testnet.vara.network',
+     *     voucherSignerData: {
+     *         sponsorName: 'Name',
+     *         sponsorMnemonic: 'strong void ...'
+     *     }
+     * });
+     * 
+     * // Returns SailsCalls instance with one contract data.
+     * // With network: wss://testnet.vara.network
+     * const sailsCalls = await SailsCalls.create({
+     *     network: 'wss://testnet.vara.network',
+     *     newContractsData: [
+     *         {
+     *             contractName: "PingContract",
+     *             address: '0x...',
+     *             idl: `...`
+     *         }
+     *     ]
+     * });
+     * 
+     * // Returns SailsCalls instance with one contract data.
+     * // With voucher signer and network: ws://localhost:9944
+     * const sailsCalls = await SailsCalls.create({
+     *     voucherSignerData: {
+     *         sponsorName: 'Name',
+     *         sponsorMnemonic: 'strong void ...'
+     *     },
+     *     newContractsData: [
+     *         {
+     *             contractName: "PingContract",
+     *             address: '0x...',
+     *             idl: `...`
+     *         }
+     *     ]
+     * });
+     * 
+     * // Returns SailsCalls instance with one contract data
+     * // With voucher signer and Network: wss://testnet.vara.network
+     * const sailsCalls = await SailsCalls.create({
+     *     network: 'wss://testnet.vara.network',
+     *     voucherSignerData: {
+     *         sponsorName: 'Name',
+     *         sponsorMnemonic: 'strong void ...'
+     *     },
+     *     newContractsData: [
+     *         {
+     *             contractName: "PingContract",
+     *             address: '0x...',
+     *             idl: `...`
+     *         },
+     *         {
+     *             // Contract data
+     *         },
+     *         // More contracts
+     *     ]
+     * });
+     */
+    static create = (data?: ISailsCalls): Promise<SailsCalls> => {
+        return new Promise(async (resolve, reject) => {
+            const {
+                newContractsData = [],
+                network = 'ws://localhost:9944',
+                voucherSignerData,
+                gearApi
+            } = data || {};
+
+            let voucherSigner: KeyringPair | null = null;
+
+            if (voucherSignerData) {
+                const { sponsorName, sponsorMnemonic } = voucherSignerData;
+                try {
+                    voucherSigner = await GearKeyring.fromMnemonic(sponsorMnemonic, sponsorName);
+                } catch (e) {
+                    const error: SailsCallsError = {
+                        sailsCallsError: 'Error while set signer account, voucher signer not set',
+                        gearError: (e as Error).message
+                    };
+    
+                    reject(error);
+                    return;
+                }
+            }
+
+            const api = gearApi
+                ? gearApi
+                : await GearApi.create({ 
+                    providerAddress: network 
+                  });
+
+            const sailsParser = await SailsIdlParser.new();
+            try {
+                const sailsInstance = new SailsCalls(
+                    api, 
+                    sailsParser, 
+                    newContractsData, 
+                    // network,    
+                    voucherSigner
+                )
+
+                resolve(sailsInstance);
+            } catch (e) {
+                const error = (e as Error).message;
+                reject(error);
+            }
+        });
+    }
+
+    /**
+     * @deprecated Use SailsCalls.create instead
+     * ## Returs a new SailsCalls instance
+     * - Static method that returns a new instance of SailsCalls
+     * - The parameter is optional, and its attributes are optionals too:
+     *     + newContractsData: Contracts data to store in the SailsCalls instance to be used later
+     *     + network: Network to connect the api
+     *     + voucherSignerData: sponsor name and mnemonic that will be used to sign the vouchers, etc (only for vouchers - gasless purpose)
+     * @param data Optional parameter to set initial contracts data, network and sponsor
+     * @returns SailsCalls instance
+     * @example
+     * // Returns SailsCalls instance with no contracts data.
+     * // With network: ws://localhost:9944
      * const sailsCalls = await SailsCalls.new();
      * 
      * // Returns SailsCalls instance with no contracts data.
@@ -207,55 +338,7 @@ export class SailsCalls {
      *     ]
      * });
      */
-    static new = (data?: ISailsCalls): Promise<SailsCalls> => {
-        return new Promise(async (resolve, reject) => {
-            const {
-                newContractsData = [],
-                network = 'ws://localhost:9944',
-                voucherSignerData,
-                gearApi
-            } = data || {};
-
-            let voucherSigner: KeyringPair | null = null;
-
-            if (voucherSignerData) {
-                const { sponsorName, sponsorMnemonic } = voucherSignerData;
-                try {
-                    voucherSigner = await GearKeyring.fromMnemonic(sponsorMnemonic, sponsorName);
-                } catch (e) {
-                    const error: SailsCallsError = {
-                        sailsCallsError: 'Error while set signer account, voucher signer not set',
-                        gearError: (e as Error).message
-                    };
-    
-                    reject(error);
-                    return;
-                }
-            }
-
-            const api = gearApi
-                ? gearApi
-                : await GearApi.create({ 
-                    providerAddress: network 
-                  });
-
-            const sailsParser = await SailsIdlParser.new();
-            try {
-                const sailsInstance = new SailsCalls(
-                    api, 
-                    sailsParser, 
-                    newContractsData, 
-                    // network,    
-                    voucherSigner
-                )
-
-                resolve(sailsInstance);
-            } catch (e) {
-                const error = (e as Error).message;
-                reject(error);
-            }
-        });
-    }
+    static readonly new: (data?: ISailsCalls) => Promise<SailsCalls> = SailsCalls.create;
 
     private contractInstanceToCall = (contractToCall?: ContractData | string): { error: false, data: Sails } | { error: true, data: SailsCallsError } => {
         let contractSailsInstance: Sails;

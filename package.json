@@ -12,9 +12,13 @@
   "main": "./lib/cjs/index.cjs",
   "module": "./lib/index.js",
   "types": "./lib/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "*": ["lib/*"]
+    }
+  },
   "exports": {
     ".": {
-      "types": "./lib/index.d.ts",
       "import": "./lib/index.js",
       "require": "./lib/cjs/index.cjs"
     }
