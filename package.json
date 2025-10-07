@@ -1,6 +1,6 @@
 {
   "name": "sailscalls",
-  "version": "2.1.0",
+  "version": "2.4.0",
   "description": "Typescript library for working with Sails programs",
   "type": "module",
   "license": "MIT",
