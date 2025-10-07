@@ -20,26 +20,29 @@ import type {
     ICommandResponse,
     IFormatedKeyring,
     ModifiedLockedKeyringPair,
+    ISailsCallsSubscribe,
+    ContractData
 } from "./types.js";
 import Decimal from "decimal.js";
+import { generateUUID } from "./utils.js";
 
 export class SailsCalls {
     private sailsInstances: SailsCallsContractsData;
     private gearApi: GearApi;
     private sailsParser: SailsIdlParser;
     private accountToSignVouchers: KeyringPair | null;
+    private lookedEvents: Map<string, Promise<() => void>>;
 
     private constructor(
         api: GearApi,
         parser: SailsIdlParser,
         newContractsData: NewContractData[],
-        // network: string,
         accountToSignVouchers: KeyringPair | null
     ) {
         this.gearApi = api;
         this.sailsParser = parser;
         this.sailsInstances = {};
-        // this.network = network;
+        this.lookedEvents = new Map();
         this.accountToSignVouchers = accountToSignVouchers;
 
         for (const newContractData of newContractsData) {
@@ -252,6 +255,182 @@ export class SailsCalls {
                 reject(error);
             }
         });
+    }
+
+    private contractInstanceToCall = (contractToCall?: ContractData | string): { error: false, data: Sails } | { error: true, data: SailsCallsError } => {
+        let contractSailsInstance: Sails;
+
+        if (contractToCall) {
+            if (typeof contractToCall === 'string') {
+                const temp = this.sailsInstances[contractToCall];
+                if (!temp) {
+                    const error: SailsCallsError = {
+                        sailsCallsError: `Contract name '${contractToCall}' is not set in SailsCalls instance`
+                    };
+    
+                    return {
+                        error: true,
+                        data: error
+                    };
+                }
+
+                contractSailsInstance = temp.sailsInstance;
+            } else {
+                contractSailsInstance = new Sails(this.sailsParser);
+                try {
+                    contractSailsInstance.setApi(this.gearApi);
+                    contractSailsInstance.parseIdl(contractToCall.idl);
+                    contractSailsInstance.setProgramId(contractToCall.address);
+                } catch (e) {
+                    const error: SailsCallsError = {
+                        sailsError: (e as Error).message
+                    };
+    
+                    return {
+                        error: true,
+                        data: error
+                    };
+                }
+            }
+        } else {
+            const contractNames = Object.keys(this.sailsInstances);
+
+            if (contractNames.length < 1) {
+                const error: SailsCallsError = {
+                    sailsCallsError: 'No contracts stored in SailsCalls instance'
+                };
+
+                return {
+                    error: true,
+                    data: error
+                };
+            }
+
+            contractSailsInstance = this.sailsInstances[contractNames[0]].sailsInstance;
+        }
+
+        return {
+            error: false,
+            data: contractSailsInstance
+        };
+    }
+
+    /**
+     * 
+     * @param sailscallsEventSubscribe attributes for subscription:
+     *  - `serviceName`: Name of the service to call in the contract
+     *  - `eventName`: Event name to subscribe
+     *  - `contractToCall`: **OPTIONAL**, contract to call with SailsCalls, you can omit it (SailsCalls will 
+     *    use the first one that you set when you create the instance), set the name of the contract to
+     *    call that you put in the contract data, or with a new ContractData objet.
+     *  - `onEventEmit`: Function that sailscalls will call when it detect that the contract emit an event, and
+     *    will pass the payload received from the event, the callback can be an async function.
+     * @returns Async function to unsubscribe manualy to the event
+     * @example
+     * 
+     * // Supose that the code contains a sailscalls instance
+     * 
+     * // Subscribe to event - get the contract stored
+     * const usubfunc = sailscalls.subscribeTo({
+     *     serviceName: "ServiceName",
+     *     eventName: "EventName",
+     *     onEventEmit: (data) => {
+     *         console.log("data from event:");
+     *         console.log(data);
+     *     }
+     * });
+     * 
+     * // Subscribe to event - set the contract name to call
+     * const usubfunc = sailscalls.subscribeTo({
+     *     contractToCall: "ContractName",
+     *     serviceName: "ServiceName",
+     *     eventName: "EventName",
+     *     onEventEmit: (data) => {
+     *         console.log("data from event:");
+     *         console.log(data);
+     *     }
+     * });
+     * 
+     * // Subscribe to event - set the contract data
+     * const usubfunc = sailscalls.subscribeTo({
+     *     contractToCall: {
+     *         address: "0x...",
+     *         idl: `...`
+     *     },
+     *     serviceName: "ServiceName",
+     *     eventName: "EventName",
+     *     onEventEmit: (data) => {
+     *         console.log("data from event:");
+     *         console.log(data);
+     *     }
+     * });
+     */
+    subscribeTo = ({serviceName, eventName, contractToCall, onEventEmit}: ISailsCallsSubscribe): (() => Promise<void>) | SailsCallsError => {
+        let contractSailsInstance: Sails;
+        const result = this.contractInstanceToCall(contractToCall);
+        
+        if (result.error == false) {
+            contractSailsInstance = result.data;
+        } else {
+            return result.data;
+        }
+
+        const serviceNames = this.servicesFromSailsInstance(contractSailsInstance);
+
+        if (!serviceNames.includes(serviceName)) {
+            const error: SailsCallsError = {
+                sailsCallsError: `Service name '${serviceName}' does not exists in contract.\nServices: [${serviceNames}]`
+            };
+
+            return error;
+        }
+
+        const functionsNames = this.serviceFunctionNamesFromSailsInstance(
+            contractSailsInstance, 
+            serviceName, 
+            'events'
+        );
+
+        if (!functionsNames.includes(eventName)) {
+            const error: SailsCallsError = {
+                sailsCallsError: `Event name '${eventName}' does not exists in service '${serviceName}'.\nEvents: [${functionsNames}]`
+            };
+
+            return error;
+        }
+
+        const unsubPromise = contractSailsInstance
+            .services[serviceName]
+            .events[eventName]
+            .subscribe(onEventEmit);
+        const unsubId = generateUUID();
+        this.lookedEvents.set(unsubId, unsubPromise);
+
+        return async () => {
+            const unsubCall = await unsubPromise;
+            unsubCall();
+            this.lookedEvents.delete(unsubId);
+        };
+    }
+
+    /**
+     * ### Close all event listeners
+     */
+    unsubscribeAllEvents = async () => {
+        for (const [key, unsubPromise] of this.lookedEvents.entries()) {
+            const unsubCall = await unsubPromise;
+            unsubCall();
+        }
+
+        this.lookedEvents.clear();
+    }
+
+    /**
+     * ### Get the number of event listeners
+     * @returns Number of active event listeners
+     */
+    numberOfEventListeners = () => {
+        return this.lookedEvents.size;
     }
 
     /**
@@ -516,49 +695,14 @@ export class SailsCalls {
             } = options;
 
             let contractSailsInstance: Sails;
-
-            if (contractToCall) {
-                if (typeof contractToCall === 'string') {
-                    const temp = this.sailsInstances[contractToCall];
-                    if (!temp) {
-                        const error: SailsCallsError = {
-                            sailsCallsError: `Contract name '${contractToCall}' is not set in SailsCalls instance`
-                        };
-        
-                        reject(error);
-                        return;
-                    }
-
-                    contractSailsInstance = temp.sailsInstance;
-                } else {
-                    contractSailsInstance = new Sails(this.sailsParser);
-                    try {
-                        contractSailsInstance.setApi(this.gearApi);
-                        contractSailsInstance.parseIdl(contractToCall.idl);
-                        contractSailsInstance.setProgramId(contractToCall.address);
-                    } catch (e) {
-                        const error: SailsCallsError = {
-                            sailsError: (e as Error).message
-                        };
-        
-                        reject(error);
-                        return;
-                    }
-                }
+            const result = this.contractInstanceToCall(contractToCall);
+            
+            if (result.error == false) {
+                contractSailsInstance = result.data;
             } else {
-                const contractNames = Object.keys(this.sailsInstances);
-
-                if (contractNames.length < 1) {
-                    const error: SailsCallsError = {
-                        sailsCallsError: 'No contracts stored in SailsCalls instance'
-                    };
-
-                    reject(error);
-                    return;
-                }
-
-                contractSailsInstance = this.sailsInstances[contractNames[0]].sailsInstance;
-            }
+                reject(result.data);
+                return;
+            }     
 
             const serviceNames = this.servicesFromSailsInstance(contractSailsInstance);
 
@@ -826,54 +970,19 @@ export class SailsCalls {
                 contractToCall,
                 serviceName,
                 methodName,
-                userAddress = ZERO_ADDRESS,
+                userAddress,
                 callArguments = [],
                 callbacks
             } = options;
 
             let contractSailsInstance: Sails;
-
-            if (contractToCall) {
-                if (typeof contractToCall === 'string') {
-                    const temp = this.sailsInstances[contractToCall];
-                    if (!temp) {
-                        const error: SailsCallsError = {
-                            sailsCallsError: `Contract name '${contractToCall}' is not set in SailsCalls instance`,
-                        };
-
-                        reject(error);
-                        return;
-                    }
-
-                    contractSailsInstance = temp.sailsInstance;
-                } else {
-                    contractSailsInstance = new Sails(this.sailsParser);
-                    try {
-                        contractSailsInstance.setApi(this.gearApi);
-                        contractSailsInstance.parseIdl(contractToCall.idl);
-                        contractSailsInstance.setProgramId(contractToCall.address);
-                    } catch (e) {
-                        const error: SailsCallsError = {
-                            sailsError: (e as Error).message
-                        };
-
-                        reject(error);
-                        return;
-                    }
-                }
+            const result = this.contractInstanceToCall(contractToCall);
+            
+            if (result.error == false) {
+                contractSailsInstance = result.data;
             } else {
-                const contractNames = Object.keys(this.sailsInstances);
-
-                if (contractNames.length < 1) {
-                    const error: SailsCallsError = {
-                        sailsCallsError: 'No contracts stored in SailsCalls instance'
-                    };
-
-                    reject(error);
-                    return;
-                }
-
-                contractSailsInstance = this.sailsInstances[contractNames[0]].sailsInstance;
+                reject(result.data);
+                return;
             }
 
             const serviceNames = this.servicesFromSailsInstance(contractSailsInstance);
@@ -905,17 +1014,14 @@ export class SailsCalls {
             await this.processCallBack('asynconload', callbacks);
             this.processCallBack('onload', callbacks);
 
-            const queryMethod = contractSailsInstance
+            const queryBuilder = contractSailsInstance
                 .services[serviceName]
-                .queries[methodName];
+                .queries[methodName](...callArguments);
 
             try {
-                const queryResponse = await queryMethod(
-                    userAddress, 
-                    undefined, 
-                    undefined, 
-                    ...callArguments
-                );
+                if (userAddress) queryBuilder.withAddress(userAddress);
+
+                const queryResponse = await queryBuilder.call();
 
                 await this.processCallBack('asynconsuccess', callbacks);
                 this.processCallBack('onsuccess', callbacks);
@@ -1743,7 +1849,7 @@ export class SailsCalls {
     serviceFunctionNamesFromSailsInstance = (
         sailsInstance: Sails,
         serviceName: string,
-        functionsFrom: "queries" | "functions", 
+        functionsFrom: "queries" | "functions" | "events", 
     ): string[] => {
         return Object.keys(sailsInstance.services[serviceName][functionsFrom]);
     }

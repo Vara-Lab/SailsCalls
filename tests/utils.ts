@@ -1,8 +1,8 @@
 export const sailsCallsData = {
     network: 'wss://testnet.vara.network',
-    contractId: '0xe394faef158f507f7a46bf98bc1461ab906db114063e28a4c0880ef102cd6c0e',
+    contractId: '0xdea744c50dcba36996f6eb450c0dea4df4fb746267d98d44699a602884ea1ec4',
     idl: `
-        type TrafficLightEvent = enum {
+        type TrafficLightResponse = enum {
             Green,
             Yellow,
             Red,
@@ -18,15 +18,21 @@ export const sailsCallsData = {
         };
 
         service TrafficLight {
-            Green : () -> TrafficLightEvent;
-            Red : () -> TrafficLightEvent;
-            Yellow : () -> TrafficLightEvent;
+            Green : () -> TrafficLightResponse;
+            Red : () -> TrafficLightResponse;
+            Yellow : () -> TrafficLightResponse;
             query TrafficLight : () -> IoTrafficLightState;
+
+            events {
+                ChangedToGreen;
+                ChangedToYellow;
+                ChangedToRed;
+            }
         };
     `,
     voucherSignerData: {
-        sponsorName: '',
-        sponsorMnemonic: ''
+        sponsorName: 'davidadmin',
+        sponsorMnemonic: 'strong orchard plastic arena pyramid lobster lonely rich stomach label clog rubber'
     }
 };
 

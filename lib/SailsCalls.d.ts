@@ -2,12 +2,13 @@ import { Sails } from "sails-js";
 import { GearApi } from "@gear-js/api";
 import type { KeyringPair, KeyringPair$Json } from '@polkadot/keyring/types';
 import type { HexString } from "@gear-js/api";
-import type { ISailsCommandOptions, ISailsQueryOptions, ISailsCalls, ICreateVoucher, IRenewVoucherAmountOfBlocks, ITokensToAddToVoucher, ICommandResponse, IFormatedKeyring, ModifiedLockedKeyringPair } from "./types.js";
+import type { ISailsCommandOptions, ISailsQueryOptions, ISailsCalls, SailsCallsError, ICreateVoucher, IRenewVoucherAmountOfBlocks, ITokensToAddToVoucher, ICommandResponse, IFormatedKeyring, ModifiedLockedKeyringPair, ISailsCallsSubscribe } from "./types.js";
 export declare class SailsCalls {
     private sailsInstances;
     private gearApi;
     private sailsParser;
     private accountToSignVouchers;
+    private lookedEvents;
     private constructor();
     /**
      * ## Returns the gear api of sailscalls instance
@@ -104,6 +105,67 @@ export declare class SailsCalls {
      * });
      */
     static new: (data?: ISailsCalls) => Promise<SailsCalls>;
+    private contractInstanceToCall;
+    /**
+     *
+     * @param sailscallsEventSubscribe attributes for subscription:
+     *  - `serviceName`: Name of the service to call in the contract
+     *  - `eventName`: Event name to subscribe
+     *  - `contractToCall`: **OPTIONAL**, contract to call with SailsCalls, you can omit it (SailsCalls will
+     *    use the first one that you set when you create the instance), set the name of the contract to
+     *    call that you put in the contract data, or with a new ContractData objet.
+     *  - `onEventEmit`: Function that sailscalls will call when it detect that the contract emit an event, and
+     *    will pass the payload received from the event, the callback can be an async function.
+     * @returns Async function to unsubscribe manualy to the event
+     * @example
+     *
+     * // Supose that the code contains a sailscalls instance
+     *
+     * // Subscribe to event - get the contract stored
+     * const usubfunc = sailscalls.subscribeTo({
+     *     serviceName: "ServiceName",
+     *     eventName: "EventName",
+     *     onEventEmit: (data) => {
+     *         console.log("data from event:");
+     *         console.log(data);
+     *     }
+     * });
+     *
+     * // Subscribe to event - set the contract name to call
+     * const usubfunc = sailscalls.subscribeTo({
+     *     contractToCall: "ContractName",
+     *     serviceName: "ServiceName",
+     *     eventName: "EventName",
+     *     onEventEmit: (data) => {
+     *         console.log("data from event:");
+     *         console.log(data);
+     *     }
+     * });
+     *
+     * // Subscribe to event - set the contract data
+     * const usubfunc = sailscalls.subscribeTo({
+     *     contractToCall: {
+     *         address: "0x...",
+     *         idl: `...`
+     *     },
+     *     serviceName: "ServiceName",
+     *     eventName: "EventName",
+     *     onEventEmit: (data) => {
+     *         console.log("data from event:");
+     *         console.log(data);
+     *     }
+     * });
+     */
+    subscribeTo: ({ serviceName, eventName, contractToCall, onEventEmit }: ISailsCallsSubscribe) => (() => Promise<void>) | SailsCallsError;
+    /**
+     * ### Close all event listeners
+     */
+    unsubscribeAllEvents: () => Promise<void>;
+    /**
+     * ### Get the number of event listeners
+     * @returns Number of active event listeners
+     */
+    numberOfEventListeners: () => number;
     /**
      * ## SailsCalls command
      * Method to call a command in the contract (to change state).
@@ -1018,7 +1080,7 @@ export declare class SailsCalls {
      */
     disconnectGearApi: () => Promise<void>;
     servicesFromSailsInstance: (sailsInstance: Sails) => string[];
-    serviceFunctionNamesFromSailsInstance: (sailsInstance: Sails, serviceName: string, functionsFrom: "queries" | "functions") => string[];
+    serviceFunctionNamesFromSailsInstance: (sailsInstance: Sails, serviceName: string, functionsFrom: "queries" | "functions" | "events") => string[];
     private generateVoucher;
     private signVoucherAction;
     private processCallBack;

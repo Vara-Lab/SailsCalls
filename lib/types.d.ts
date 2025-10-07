@@ -7,6 +7,12 @@ export type GasLimitType = bigint | {
     extraGasInCalculatedGasFees: number;
 };
 export type ContractAddress = string | HexString | HexString[];
+export type SubscribeResult = {
+    error: true;
+    errorMessage: SailsCallsError;
+} | {
+    error: false;
+};
 export interface ModifiedLockedKeyringPair {
     address: string;
     encoded: string;
@@ -187,13 +193,79 @@ export interface SailsCallsError {
     sailsError?: string;
     gearError?: string;
 }
+export interface ISailsCallsSubscribe {
+    /**
+     * ### Contract to call - OPTIONAL
+     * - If you dont pass this attribute, SailsCalls will use the first
+     *   contract data stored (SailsCalls stores contracts inside an object
+     *    literal, with key being the name of the contract).
+     * - If you give a string, SailsCalls will search to the stored
+     *   contract to call, if not exists, it will notify to the user
+     * - If you give contract data, SailsCalls will crate a temporary
+     *   instance of Sails-js to send the menssage to the given contract
+     * @example
+     *
+     *
+     *
+     *
+     *
+     *
+     * // Example 1, give the name of the stored contract
+     * const commandOptions: ISailsQueryOptions = {
+     *     //attributes ...
+     *     contractToCall: 'PingContract', // Set the name of the contract
+     *     //attributes ...
+     * }
+     *
+     * // Example 2, give the contract data to send the message
+     * const commandOptions: ISailsQueryOptions = {
+     *     //attributes ...
+     *     contractToCall: { // Set the contract data to send the message
+     *         address: '0x...', // Cotract id to send the message
+     *         idl: `...` // Contract idl
+     *     },
+     *     //attributes ...
+     * }
+     */
+    contractToCall?: ContractData | string;
+    /**
+     * ### Service name
+     * Specify the name of the service to get events
+     */
+    serviceName: string;
+    /**
+     * ### Event name
+     * You can get the events name from your contract, for example:
+     *
+     * @example
+     * const idl = `
+     *      service ContractService {
+     *      // ... queries and methods
+     *
+     *      events {
+     *          ChangedToGreen; // Event name to use = ChangedToGreen
+     *          GetValuefrom: struct { // Event name to use = GetValuefrom
+     *              address: actor_id,
+     *              amount: u256
+     *          };
+     *      }
+     * `;
+     */
+    eventName: string;
+    /**
+     * ### Callback to execute in the event
+     * This function will be called when SailsCalls catch an event that a contract emits,
+     * it will pass the payload that are send in the event
+     */
+    onEventEmit: (event: any) => void | Promise<void>;
+}
 /**
  * ## Query options
  */
 export interface ISailsQueryOptions {
     /**
      * ### Contract to call - OPTIONAL
-     * - If you dont pass to this attribute, SailsCalls will use the first
+     * - If you dont pass this attribute, SailsCalls will use the first
      *   contract data stored (SailsCalls stores contracts inside an object
      *    literal, with key being the name of the contract).
      * - If you give a string, SailsCalls will search to the stored
