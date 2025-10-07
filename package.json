@@ -15,14 +15,15 @@
   "exports": {
     ".": {
       "import": "./lib/index.js",
-      "require": "./lib/cjs/index.cjs",
-      "types": "./index.d.ts"
+      "require": "./lib/cjs/index.cjs"
     }
   },
+  "sideEffects": false,
   "scripts": {
     "cleanlib": "rm -rfv lib",
     "build": "npx rollup --config rollup.config.js",
-    "test": "jest --detectOpenHandles"
+    "test": "jest --detectOpenHandles",
+    "prepare": "npm run build"
   },
   "dependencies": {
     "@gear-js/api": "0.44.0",
@@ -59,6 +60,7 @@
     "tslib": "^2.7.0",
     "typescript": "^5.5.4"
   },
+  "engines": { "node": ">=18" },
   "files": [
     "lib"
   ]

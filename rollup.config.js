@@ -12,9 +12,18 @@ function cleanOldBuild() {
   };
 }
 
+const externals = [
+  '@gear-js/api',
+  'sails-js',
+  'sails-js-parser',
+  'decimal.js',
+  /^@polkadot\// 
+];
+
 export default [
   {
     input: ['src/index.ts'],
+    external: externals,
     output: [
       {
         dir: 'lib',
@@ -25,22 +34,13 @@ export default [
     ],
     plugins: [
       cleanOldBuild(),
-      typescript({
-        tsconfig: 'tsconfig.build.json',
-      }),
-      nodeResolve({
-        preferBuiltins: true,
-        resolveOnly: (module) =>
-          !module.includes('polkadot') &&
-          !module.includes('gear-js/api') &&
-          !module.includes('sails-js') &&
-          !module.includes('sails-js-parser') &&
-          !module.includes('decimal.js')
-      }),
+      typescript({ tsconfig: 'tsconfig.build.json' }),
+      nodeResolve({ preferBuiltins: true }),
     ]
   },
   {
     input: 'src/index.ts',
+    external: externals,
     output: [
       {
         dir: 'lib/cjs',
@@ -49,23 +49,13 @@ export default [
         preserveModules: true,
         preserveModulesRoot: 'src',
         exports: 'named',
-        strict: false,
+        strict: false
       },
     ],
     plugins: [
-      typescript({
-        tsconfig: 'tsconfig.cjs.json'
-      }),
-      nodeResolve({
-        preferBuiltins: true,
-        resolveOnly: (module) =>
-          !module.includes('polkadot') &&
-          !module.includes('gear-js/api') &&
-          !module.includes('sails-js') &&
-          !module.includes('sails-js-parser') &&
-          !module.includes('decimal.js')
-      }),
+      typescript({ tsconfig: 'tsconfig.cjs.json' }),
+      nodeResolve({ preferBuiltins: true }),
       commonjs()
     ]
-  },
+  }
 ];
