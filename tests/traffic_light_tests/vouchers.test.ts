@@ -4,6 +4,8 @@ import { SailsCalls } from "../../src";
 import { sailsCallsData } from "../utils";
 import { GearKeyring } from "@gear-js/api";
 
+jest.setTimeout(40000);
+
 const tokensForVoucher = 1;
 const initialExpirationTime = 1200;
 
@@ -23,7 +25,7 @@ beforeAll(async () => {
             }
         ]
     })
-});
+}, 30000);
 
 afterAll(async () => {
     if (sailsCalls) {

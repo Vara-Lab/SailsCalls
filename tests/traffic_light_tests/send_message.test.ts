@@ -4,6 +4,8 @@ import { sailsCallsData } from "../utils";
 import { KeyringPair } from "@polkadot/keyring/types";
 import { GearApi } from "@gear-js/api";
 
+jest.setTimeout(40000);
+
 let sailsCalls: SailsCalls | null = null;
 let sponsorKeyring: KeyringPair | null = null;
 

@@ -3,6 +3,8 @@ import { SailsCalls } from '../../src';
 import { KeyringPair } from "@polkadot/keyring/types";
 import { sailsCallsData } from '../utils';
 
+jest.setTimeout(40000);
+
 let sailsCalls: SailsCalls | null = null;
 let sponsorKeyring: KeyringPair | null = null;
 

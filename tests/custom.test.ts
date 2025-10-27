@@ -1,5 +1,5 @@
 import { decodeAddress } from "@gear-js/api";
-import type { HexString } from "@gear-js/api";
+import type { HexString } from "@gear-js";
 import { SailsCalls } from "../src";
 import { sailsCallsData } from "./utils";
 import { GearKeyring } from "@gear-js/api";
@@ -91,7 +91,7 @@ test('renew voucher if necessary', async () => {
 //         voucherId: lockedAccount.voucherId as HexString,
 //         serviceName: 'TrafficLight',
 //         methodName: 'Yellow',
-//     }); 
+//     });
 
 //     expect(response).toBeDefined();
 //     expect(response.response).toBe('Yellow');
@@ -129,7 +129,7 @@ test('Voucher balance', async () => {
     //     voucherId: lockedAccount.voucherId as HexString,
     //     serviceName: 'TrafficLight',
     //     methodName: 'Yellow',
-    // }); 
+    // });
 
     // expect(response).toBeDefined();
     // expect(response.response).toBe('Yellow');

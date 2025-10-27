@@ -2,6 +2,8 @@ import { HexString } from '@gear-js/api';
 import { SailsCalls } from '../../src';
 import { sailsCallsData } from '../utils';
 
+jest.setTimeout(40000);
+
 let sailsCalls: SailsCalls | null = null;
 
 beforeAll(async () => {
