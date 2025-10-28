@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/semi */
-import { Sails, ZERO_ADDRESS } from "sails-js";
+import { Sails } from "sails-js";
+import { decodeAddress } from "@gear-js/api";
 import { SailsIdlParser } from "sails-js-parser";
 import { GearApi, GearKeyring } from "@gear-js/api";
 import type { KeyringPair, KeyringPair$Json } from '@polkadot/keyring/types';
@@ -92,6 +93,10 @@ export class SailsCalls {
      */
     get sponsorKeyring(): KeyringPair | null {
         return this.accountToSignVouchers;
+    }
+
+    static decodeAddress = (publicKey: string) => {
+        decodeAddress(publicKey)
     }
 
     /**
