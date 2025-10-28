@@ -1,2 +1,2 @@
-export type * from './types.js';
-export { SailsCalls } from './SailsCalls.js';
+export type * from './types';
+export { SailsCalls } from './SailsCalls';

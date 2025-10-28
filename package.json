@@ -19,6 +19,7 @@
   },
   "exports": {
     ".": {
+      "types": "./lib/index.d.ts",
       "import": "./lib/index.js",
       "require": "./lib/cjs/index.cjs"
     }
@@ -26,6 +27,7 @@
   "sideEffects": false,
   "scripts": {
     "cleanlib": "rm -rfv lib",
+    "build:types": "tsc -p tsconfig.types.json",
     "build": "npx rollup --config rollup.config.js",
     "test": "jest --detectOpenHandles",
     "prepare": "npm run build"
