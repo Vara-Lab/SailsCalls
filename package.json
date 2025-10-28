@@ -28,7 +28,8 @@
   "scripts": {
     "cleanlib": "rm -rfv lib",
     "build:types": "tsc -p tsconfig.types.json",
-    "build": "npx rollup --config rollup.config.js",
+    "build": "npx rollup --config rollup.config.js && npm run postbuild",
+    "postbuild": "node scripts/cjs-dts-bridge.mjs",
     "test": "jest --detectOpenHandles",
     "prepare": "npm run build"
   },
