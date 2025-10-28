@@ -1,5 +1,5 @@
 import { decodeAddress } from "@gear-js/api";
-import type { HexString } from "@gear-js";
+import type { HexString } from "@gear-js/api";
 import { SailsCalls } from "../src";
 import { sailsCallsData } from "./utils";
 import { GearKeyring } from "@gear-js/api";
