@@ -18,6 +18,7 @@ export declare class SailsCalls {
      * ## Returns sailscalls provider keyring
      */
     get sponsorKeyring(): KeyringPair | null;
+    static decodeAddress: (publicKey: string) => void;
     /**
      * ## Returns the sails instance of a contract
      * @param contractName OPTIONAL - Contract name set in sailscalls
