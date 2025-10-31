@@ -96,7 +96,7 @@ export class SailsCalls {
     }
 
     static decodeAddress = (publicKey: string) => {
-        decodeAddress(publicKey)
+        return decodeAddress(publicKey);
     }
 
     /**
