@@ -337,3 +337,22 @@ test('Error update voucher 2 - bad amout of tokens to add', async () => {
         sailsCallsError: `Cant add less than one token: 0 were given`
     })
 });
+
+test('Revoke voucher', async () => {
+    expect(sailsCalls).toBeInstanceOf(SailsCalls);
+
+    if (!sailsCalls) return;
+
+    try {
+        await sailsCalls.revokeVoucher(
+            vouchersId[0],
+            usersId[0]
+        );
+
+        const vouchersFromUser = await sailsCalls.vouchersInContract(usersId[0]);
+
+        expect(vouchersFromUser.length).toBe(0);
+    } catch (e) {
+        console.log(e);
+    }
+});

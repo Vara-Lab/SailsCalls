@@ -2,7 +2,7 @@ import { Sails } from "sails-js";
 import { GearApi } from "@gear-js/api";
 import type { KeyringPair, KeyringPair$Json } from '@polkadot/keyring/types';
 import type { HexString } from "@gear-js/api";
-import type { ISailsCommandOptions, ISailsQueryOptions, ISailsCalls, SailsCallsError, ICreateVoucher, IRenewVoucherAmountOfBlocks, ITokensToAddToVoucher, ICommandResponse, IFormatedKeyring, ModifiedLockedKeyringPair, ISailsCallsSubscribe } from "./types.js";
+import type { SailsCallbacks, ISailsCommandOptions, ISailsQueryOptions, ISailsCalls, SailsCallsError, ICreateVoucher, IRenewVoucherAmountOfBlocks, ITokensToAddToVoucher, ICommandResponse, IFormatedKeyring, ModifiedLockedKeyringPair, ISailsCallsSubscribe } from "./types.js";
 export declare class SailsCalls {
     private sailsInstances;
     private gearApi;
@@ -827,6 +827,32 @@ export declare class SailsCalls {
      *
      */
     createVoucher: (options: ICreateVoucher) => Promise<HexString>;
+    /**
+     * Revoke a voucher from an address
+     * @param userAddress address linked to the voucher
+     * @param voucherId voucher address
+     * @param enableLogs enable logs (OPTIONAL)
+     * @param callbacks callbacks
+     * @returns void
+     *
+     * @example
+     *
+     * const voucherId = await sailscalls.createVoucher({
+     *     contractToSetVoucher: '0xab3...',
+     *     userAddress: '0x24d...',
+     *     initialExpiredTimeInBlocks: 1_200, // One hour
+     *     initialTokensInVoucher: 3 // 3 Varas
+     * });
+     *
+     * const vouchersFromUser = await sailsCalls.vouchersInContract('0x24d...');
+     *
+     * console.log(vouchersFromUser.length); // 1
+     *
+     * await sailsCalls.revokeVoucher(voucherId, '0x24d...');
+     *
+     * console.log(vouchersFromUser.length); // 0
+     */
+    revokeVoucher: (userAddress: HexString, voucherId: HexString, enableLogs?: boolean, callbacks?: SailsCallbacks) => Promise<void>;
     /**
      * ## Renew a voucher at specified blocks
      * @param options attributes to renew an existing voucher:

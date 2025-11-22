@@ -1381,6 +1381,67 @@ export class SailsCalls {
     }
 
     /**
+     * Revoke a voucher from an address
+     * @param userAddress address linked to the voucher
+     * @param voucherId voucher address
+     * @param enableLogs enable logs (OPTIONAL)
+     * @param callbacks callbacks
+     * @returns void
+     * 
+     * @example
+     * 
+     * const voucherId = await sailscalls.createVoucher({
+     *     contractToSetVoucher: '0xab3...',
+     *     userAddress: '0x24d...',
+     *     initialExpiredTimeInBlocks: 1_200, // One hour
+     *     initialTokensInVoucher: 3 // 3 Varas
+     * });
+     * 
+     * const vouchersFromUser = await sailsCalls.vouchersInContract('0x24d...');
+     * 
+     * console.log(vouchersFromUser.length); // 1 
+     * 
+     * await sailsCalls.revokeVoucher(voucherId, '0x24d...');
+     * 
+     * console.log(vouchersFromUser.length); // 0
+     */
+    revokeVoucher = (
+        userAddress: HexString,
+        voucherId: HexString,
+        enableLogs?: boolean,
+        callbacks?: SailsCallbacks
+    ): Promise<void> => {
+        return new Promise(async (resolve, reject) => {
+            if (!this.accountToSignVouchers) {
+                const error: SailsCallsError = {
+                    sailsCallsError: 'Account to sign vouchers is not set'
+                }
+                reject(error);  
+                return;
+            }
+
+            const extrinsic = await this.gearApi
+                .voucher
+                .revoke(
+                    userAddress,
+                    voucherId
+                );
+
+            try {
+                await this.signVoucherAction(
+                    extrinsic,
+                    enableLogs ?? false,
+                    callbacks
+                );
+
+                resolve();
+            } catch (e) {
+                reject(e);
+            }
+        });
+    } 
+
+    /**
      * ## Renew a voucher at specified blocks
      * @param options attributes to renew an existing voucher:
      *     - `userAddress`: user address that is linked to the voucher.
